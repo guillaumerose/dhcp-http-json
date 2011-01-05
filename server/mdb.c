@@ -595,6 +595,10 @@ isc_result_t delete_host (hd, commit)
 	return ISC_R_SUCCESS;
 }
 
+int
+find_haddr_with_remotedb(struct host_decl **, int , unsigned , 
+		const unsigned char *, const char *, int);
+
 int find_hosts_by_haddr (struct host_decl **hp, int htype,
 			 const unsigned char *haddr, unsigned hlen,
 			 const char *file, int line)
@@ -606,6 +610,10 @@ int find_hosts_by_haddr (struct host_decl **hp, int htype,
 	if ((ret = find_haddr_in_ldap (hp, htype, hlen, haddr, file, line)))
 		return ret;
 #endif
+	int ret;
+
+	if ((ret = find_haddr_with_remotedb(hp, htype, hlen, haddr, file, line)))
+		return ret;
 
 	h.hlen = hlen + 1;
 	h.hbuf [0] = htype;
