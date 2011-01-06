@@ -1,7 +1,9 @@
 #include "dhcpd.h"
 
 int
-find_haddr_with_remotedb(struct host_decl **hp, int htype, const unsigned char *haddr, unsigned hlen, const char *file, int line) {
+find_haddr_with_remotedb(struct host_decl **hp, int htype, unsigned hlen,
+		const unsigned char *haddr, const char *file, int line)
+{
 	struct host_decl * host;
 	isc_result_t status;
 	char *type_str;
@@ -24,7 +26,6 @@ find_haddr_with_remotedb(struct host_decl **hp, int htype, const unsigned char *
 	printf("MAC = %s %s\n", type_str, print_hw_addr(htype, hlen, haddr));
 
 	char option_buffer[1024] = "fixed-address 192.168.1.2;";
-
 
 	host = (struct host_decl *)0;
 
