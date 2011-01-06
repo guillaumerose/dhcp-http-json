@@ -1,5 +1,37 @@
 #include "dhcpd.h"
 
+#include <json/json.h>
+#include <curl/curl.h>
+
+size_t
+remotedb_curl(void *ptr, size_t size, size_t nmemb, void *userdata)
+{
+	json_object *jobj = json_tokener_parse(ptr);
+
+	if ((intptr_t) jobj < 0) {
+		printf("Invalid json\n");
+		return 0;
+	}
+
+	struct json_object *joptions;
+	
+	if (json_object_get_type(jobj) != json_type_object) {
+		printf("Wrong type in field\n");
+		return 0;
+	}
+	
+	if ((joptions = json_object_object_get(jobj, "options")) == NULL) {
+		printf("options field needed\n");
+		return 0;
+	}
+
+	strncpy(userdata, json_object_get_string(joptions), 1024);
+
+	json_object_put(jobj);
+	
+	return 0;
+}
+
 int
 find_haddr_with_remotedb(struct host_decl **hp, int htype, unsigned hlen,
 		const unsigned char *haddr, const char *file, int line)
@@ -25,8 +57,25 @@ find_haddr_with_remotedb(struct host_decl **hp, int htype, unsigned hlen,
 
 	printf("MAC = %s %s\n", type_str, print_hw_addr(htype, hlen, haddr));
 
-	char option_buffer[1024] = "fixed-address 192.168.1.2;";
+	char *option_buffer = malloc(1024);
+	strncpy(option_buffer, "", 1024);
+	
+	char request[1024];
+	sprintf(request, "http://127.0.0.1:8080/options?mac=%s", print_hw_addr(htype, hlen, haddr));
 
+	CURL *curl;
+	CURLcode curl_res;
+	
+	curl = curl_easy_init();
+	if(curl) {
+		curl_easy_setopt(curl, CURLOPT_URL, request);
+		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, remotedb_curl);
+		curl_easy_setopt(curl, CURLOPT_WRITEDATA, option_buffer);
+		
+		curl_res = curl_easy_perform(curl);
+		curl_easy_cleanup(curl);
+	}
+	
 	host = (struct host_decl *)0;
 
 	status = host_allocate (&host, MDL);
@@ -81,6 +130,8 @@ find_haddr_with_remotedb(struct host_decl **hp, int htype, unsigned hlen,
 
 	*hp = host;
 
+	free(option_buffer);
+	
 	return (lease_limit);
 }
 

@@ -6,7 +6,7 @@ dhcpd_SOURCES = dhcpd.c dhcp.c bootp.c confpars.c db.c class.c failover.c \
 		omapi.c mdb.c stables.c salloc.c ddns.c dhcpleasequery.c \
 		dhcpv6.c mdb6.c ldap.c ldap_casa.c remotedb.c
 
-dhcpd_CFLAGS = $(LDAP_CFLAGS)
+dhcpd_CFLAGS = -ljson -lcurl $(LDAP_CFLAGS)
 dhcpd_LDADD = ../common/libdhcp.a ../omapip/libomapi.a \
 	      ../dhcpctl/libdhcpctl.a ../bind/lib/libdns.a \
 	      ../bind/lib/libisc.a
