@@ -3,42 +3,75 @@
 #include <json/json.h>
 #include <curl/curl.h>
 
+#define REMOTEDB_IP "127.0.0.1"
+#define REMOTEDB_PORT 8080
+#define REMOTEDB_BASE "/dhcp"
+
+#define REMOTEDB_LEASE_LIMIT 1000
+#define REMOTEDB_TIMEOUT 1
+
+static int remotedb_disable = 0;
+	
+static int
+get_timestamp()
+{
+        time_t timestamp;
+        time(&timestamp);
+        return (int) timestamp;
+}
+
 size_t
 remotedb_curl(void *ptr, size_t size, size_t nmemb, void *userdata)
 {
+        char *option_buffer = (char *) userdata;
+	
 	json_object *jobj = json_tokener_parse(ptr);
 
 	if ((intptr_t) jobj < 0) {
-		printf("Invalid json\n");
+		log_error("[remotedb] Invalid json");
 		return 0;
 	}
 
 	struct json_object *joptions;
 	
 	if (json_object_get_type(jobj) != json_type_object) {
-		printf("Wrong type in field\n");
+		log_error("[remotedb] Type in field");
 		return 0;
 	}
 	
 	if ((joptions = json_object_object_get(jobj, "options")) == NULL) {
-		printf("options field needed\n");
+		log_error("[remotedb] Options field needed");
 		return 0;
 	}
 
-	strncpy(userdata, json_object_get_string(joptions), 1024);
-
+	strncpy(option_buffer, json_object_get_string(joptions), 1024);
+        log_info("[remotedb] Received : %s", option_buffer);
+	
 	json_object_put(jobj);
 	
-	return 0;
+	return nmemb * size;
 }
 
 int
 find_haddr_with_remotedb(struct host_decl **hp, int htype, unsigned hlen,
 		const unsigned char *haddr, const char *file, int line)
-{
+{	
 	struct host_decl * host;
 	isc_result_t status;
-	char *type_str;
+	char *type_str = NULL;
+	int declaration, lease_limit;
+	enum dhcp_token token;
+	struct parse *cfile;
+	isc_result_t res;
+	const char *val;
+
+	CURL *curl;
+	CURLcode curl_res = CURLE_FAILED_INIT;
+	
+	lease_limit = REMOTEDB_LEASE_LIMIT;
+
+	if (remotedb_disable && get_timestamp() - remotedb_disable <= 30)
+                return 0;
 
 	switch (htype) 
 	{
@@ -55,16 +88,14 @@ find_haddr_with_remotedb(struct host_decl **hp, int htype, unsigned hlen,
 			type_str = "something else";
 	}
 
-	printf("MAC = %s %s\n", type_str, print_hw_addr(htype, hlen, haddr));
+	log_info("[remotedb] Request by %s %s", type_str, print_hw_addr(htype, hlen, haddr));
 
 	char *option_buffer = malloc(1024);
 	strncpy(option_buffer, "", 1024);
 	
 	char request[1024];
-	sprintf(request, "http://127.0.0.1:8080/options?mac=%s", print_hw_addr(htype, hlen, haddr));
-
-	CURL *curl;
-	CURLcode curl_res;
+	sprintf(request, "http://%s:%d%s/options?mac=%s", REMOTEDB_IP, REMOTEDB_PORT, REMOTEDB_BASE, print_hw_addr(htype, hlen, haddr));
+	log_info("[remotedb] Calling %s", request);
 	
 	curl = curl_easy_init();
 	if(curl) {
@@ -72,11 +103,20 @@ find_haddr_with_remotedb(struct host_decl **hp, int htype, unsigned hlen,
 		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, remotedb_curl);
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, option_buffer);
 		
+		curl_easy_setopt(curl, CURLOPT_TIMEOUT, REMOTEDB_TIMEOUT);
+		curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, REMOTEDB_TIMEOUT);
+
 		curl_res = curl_easy_perform(curl);
 		curl_easy_cleanup(curl);
 	}
+
+	if (curl_res != CURLE_OK) {
+	        log_error("[remotedb] Request failed, disabling remotedb");
+		remotedb_disable = get_timestamp();
+		return 0;
+	}
 	
-	host = (struct host_decl *)0;
+	host = (struct host_decl *) 0;
 
 	status = host_allocate (&host, MDL);
 	if (status != ISC_R_SUCCESS)
@@ -100,13 +140,6 @@ find_haddr_with_remotedb(struct host_decl **hp, int htype, unsigned hlen,
 		return (0);
 	}
 
-	int declaration, lease_limit;
-	enum dhcp_token token;
-	struct parse *cfile;
-	isc_result_t res;
-	const char *val;
-
-	lease_limit = 1000;
 
 	cfile = (struct parse *) NULL;
 	res = new_parse (&cfile, -1, option_buffer, strlen(option_buffer), 

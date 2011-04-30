@@ -2,3 +2,8 @@ h1. dhcp-http-json
 
 An experiment with DHCP
 
+h2. Install
+
+Dependencies : json-c, libcurl-dev
+
+Run aclocal, automake, ./configure
