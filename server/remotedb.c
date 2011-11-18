@@ -88,13 +88,13 @@ find_haddr_with_remotedb(struct host_decl **hp, int htype, unsigned hlen,
 			type_str = "something else";
 	}
 
-	log_info("[remotedb] Request by %s %s", type_str, print_hw_addr(htype, hlen, haddr));
+	log_info("[remotedb] Request by %s %s", type_str, print_hw_addr(htype, hlen, (unsigned char *)haddr));
 
 	char *option_buffer = malloc(1024);
 	strncpy(option_buffer, "", 1024);
 	
 	char request[1024];
-	sprintf(request, "http://%s:%d%s/options?mac=%s", REMOTEDB_IP, REMOTEDB_PORT, REMOTEDB_BASE, print_hw_addr(htype, hlen, haddr));
+	sprintf(request, "http://%s:%d%s/options?mac=%s", REMOTEDB_IP, REMOTEDB_PORT, REMOTEDB_BASE, print_hw_addr(htype, hlen, (unsigned char *)haddr));
 	log_info("[remotedb] Calling %s", request);
 	
 	curl = curl_easy_init();
