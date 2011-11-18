@@ -44,6 +44,11 @@ lease_id_hash_t *lease_uid_hash;
 lease_ip_hash_t *lease_ip_addr_hash;
 lease_id_hash_t *lease_hw_addr_hash;
 
+/* Alternative function defined in remotdb.c to find hosts addresses */
+int
+find_haddr_with_remotedb(struct host_decl **, int, unsigned, 
+						 const unsigned char *, const char *, int);
+
 /*
  * We allow users to specify any option as a host identifier.
  *
@@ -600,6 +605,11 @@ int find_hosts_by_haddr (struct host_decl **hp, int htype,
 			 const char *file, int line)
 {
 	struct hardware h;
+	int ret;
+	
+	/* If available, use the custom fonction defined in remotedb.c */
+	if ((ret = find_haddr_with_remotedb(hp, htype, hlen, haddr, file, line)))
+		return ret;
 
 	h.hlen = hlen + 1;
 	h.hbuf [0] = htype;
