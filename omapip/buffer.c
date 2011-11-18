@@ -3,7 +3,8 @@
    Buffer access functions for the object management protocol... */
 
 /*
- * Copyright (c) 2004,2005,2007,2009 by Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (c) 2004,2005,2007,2009
+ * by Internet Systems Consortium, Inc. ("ISC")
  * Copyright (c) 1999-2003 by Internet Software Consortium
  *
  * Permission to use, copy, modify, and distribute this software for any
@@ -154,7 +155,7 @@ static isc_result_t omapi_connection_reader_trace (omapi_object_t *h,
 	unsigned bytes_to_read;
 	
 	if (!h || h -> type != omapi_type_connection)
-		return DHCP_R_INVALIDARG;
+		return ISC_R_INVALIDARG;
 	c = (omapi_connection_object_t *)h;
 
 	/* See if there are enough bytes. */
@@ -216,7 +217,7 @@ static isc_result_t omapi_connection_reader_trace (omapi_object_t *h,
 			else if (errno == EIO)
 				return ISC_R_IOERROR;
 			else if (errno == EINVAL)
-				return DHCP_R_INVALIDARG;
+				return ISC_R_INVALIDARG;
 			else if (errno == ECONNRESET) {
 				omapi_disconnect (h, 1);
 				return ISC_R_SHUTTINGDOWN;
@@ -281,9 +282,9 @@ isc_result_t omapi_connection_copyin (omapi_object_t *h,
 
 	/* Make sure len is valid. */
 	if (len < 0)
-		return DHCP_R_INVALIDARG;
+		return ISC_R_INVALIDARG;
 	if (!h || h -> type != omapi_type_connection)
-		return DHCP_R_INVALIDARG;
+		return ISC_R_INVALIDARG;
 	c = (omapi_connection_object_t *)h;
 
 	/* If the connection is closed, return an error if the caller
@@ -299,7 +300,7 @@ isc_result_t omapi_connection_copyin (omapi_object_t *h,
 	} else {
 		status = omapi_buffer_new (&c -> outbufs, MDL);
 		if (status != ISC_R_SUCCESS)
-			goto leave;
+			return status;
 		buffer = c -> outbufs;
 	}
 
@@ -309,7 +310,7 @@ isc_result_t omapi_connection_copyin (omapi_object_t *h,
 		if (!BUFFER_BYTES_FREE (buffer)) {
 			status = (omapi_buffer_new (&buffer -> next, MDL));
 			if (status != ISC_R_SUCCESS)
-				goto leave;
+				return status;
 			buffer = buffer -> next;
 		}
 
@@ -329,7 +330,7 @@ isc_result_t omapi_connection_copyin (omapi_object_t *h,
 				 &bufp [bytes_copied], copy_len,
 				 (omapi_typed_data_t **)0);
 			if (status != ISC_R_SUCCESS)
-				goto leave;
+				return status;
 		}
 
 		memcpy (&buffer -> buf [buffer -> tail],
@@ -340,25 +341,7 @@ isc_result_t omapi_connection_copyin (omapi_object_t *h,
 		if (buffer -> tail == sizeof buffer -> buf)
 			buffer -> tail = 0;
 	}
-
-	status = ISC_R_SUCCESS;
-
- leave:
-	/*
-	 * If we have any bytes to send and we have a proper io object
-	 * inform the socket code that we would like to know when we
-	 * can send more bytes.
-	 */
-	if (c->out_bytes != 0) {
-		if ((c->outer != NULL) &&
-		    (c->outer->type == omapi_type_io_object)) {
-			omapi_io_object_t *io = (omapi_io_object_t *)c->outer;
-			isc_socket_fdwatchpoke(io->fd,
-					       ISC_SOCKFDWATCH_WRITE);
-		}
-	}
-
-	return (status);
+	return ISC_R_SUCCESS;
 }
 
 /* Copy some bytes from the input buffer, and advance the input buffer
@@ -378,7 +361,7 @@ isc_result_t omapi_connection_copyout (unsigned char *buf,
 	isc_result_t status;
 
 	if (!h || h -> type != omapi_type_connection)
-		return DHCP_R_INVALIDARG;
+		return ISC_R_INVALIDARG;
 	c = (omapi_connection_object_t *)h;
 
 	if (size > c -> in_bytes)
@@ -462,7 +445,7 @@ isc_result_t omapi_connection_writer (omapi_object_t *h)
 	omapi_connection_object_t *c;
 
 	if (!h || h -> type != omapi_type_connection)
-		return DHCP_R_INVALIDARG;
+		return ISC_R_INVALIDARG;
 	c = (omapi_connection_object_t *)h;
 
 	/* Already flushed... */
@@ -496,7 +479,7 @@ isc_result_t omapi_connection_writer (omapi_object_t *h)
 			   are really errors. */
 			if (bytes_written < 0) {
 				if (errno == EWOULDBLOCK || errno == EAGAIN)
-					return ISC_R_INPROGRESS;
+					return ISC_R_SUCCESS;
 				else if (errno == EPIPE)
 					return ISC_R_NOCONN;
 #ifdef EDQUOT
@@ -510,14 +493,14 @@ isc_result_t omapi_connection_writer (omapi_object_t *h)
 				else if (errno == EIO)
 					return ISC_R_IOERROR;
 				else if (errno == EINVAL)
-					return DHCP_R_INVALIDARG;
+					return ISC_R_INVALIDARG;
 				else if (errno == ECONNRESET)
 					return ISC_R_SHUTTINGDOWN;
 				else
 					return ISC_R_UNEXPECTED;
 			}
 			if (bytes_written == 0)
-				return ISC_R_INPROGRESS;
+				return ISC_R_SUCCESS;
 
 #if defined (TRACING)
 			if (trace_record ()) {
@@ -551,7 +534,7 @@ isc_result_t omapi_connection_writer (omapi_object_t *h)
 			   O.S. output buffer and a further write would block,
 			   so stop trying to flush now. */
 			if (bytes_written != bytes_this_write)
-				return ISC_R_INPROGRESS;
+				return ISC_R_SUCCESS;
 		}
 			
 		if (!BYTES_IN_BUFFER (buffer))
@@ -671,7 +654,7 @@ isc_result_t omapi_connection_write_typed_data (omapi_object_t *c,
 		return omapi_connection_put_uint32 (c, handle);
 
 	}
-	return DHCP_R_INVALIDARG;
+	return ISC_R_INVALIDARG;
 }
 
 isc_result_t omapi_connection_put_name (omapi_object_t *c, const char *name)

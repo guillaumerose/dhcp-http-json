@@ -57,7 +57,8 @@
  */
 
 /*
- * Portions Copyright (c) 2007,2009 by Internet Systems Consortium, Inc. ("ISC")
+ * Portions Copyright (c) 2007,2009
+ * by Internet Systems Consortium, Inc. ("ISC")
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -83,8 +84,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include "md5_locl.h"
-#include "cdefs.h"
-#include "osdep.h"
+#include "minires/minires.h"
 
 #ifdef USE_MD5 /* Added by ogud@tis.com 1998/1/26 */
 

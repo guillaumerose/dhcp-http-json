@@ -47,11 +47,6 @@ dhcpctl_status dhcpctl_initialize ()
 {
 	isc_result_t status;
 
-	/* Set up the isc and dns library managers */
-	status = dhcp_context_create();
-	if (status != ISC_R_SUCCESS)
-		return status;
-
 	status = omapi_init();
 	if (status != ISC_R_SUCCESS)
 		return status;
@@ -112,7 +107,7 @@ dhcpctl_status dhcpctl_connect (dhcpctl_handle *connection,
 					 (unsigned)port, authinfo);
 	if (status == ISC_R_SUCCESS)
 		return status;
-	if (status != DHCP_R_INCOMPLETE) {
+	if (status != ISC_R_INCOMPLETE) {
 		omapi_object_dereference (connection, MDL);
 		return status;
 	}
@@ -444,7 +439,7 @@ dhcpctl_status dhcpctl_object_update (dhcpctl_handle connection,
 	dhcpctl_remote_object_t *ro;
 
 	if (h -> type != dhcpctl_remote_type)
-		return DHCP_R_INVALIDARG;
+		return ISC_R_INVALIDARG;
 	ro = (dhcpctl_remote_object_t *)h;
 
 	status = omapi_message_new (&message, MDL);
@@ -493,7 +488,7 @@ dhcpctl_status dhcpctl_object_refresh (dhcpctl_handle connection,
 	dhcpctl_remote_object_t *ro;
 
 	if (h -> type != dhcpctl_remote_type)
-		return DHCP_R_INVALIDARG;
+		return ISC_R_INVALIDARG;
 	ro = (dhcpctl_remote_object_t *)h;
 
 	status = omapi_message_new (&message, MDL);
@@ -546,7 +541,7 @@ dhcpctl_status dhcpctl_object_remove (dhcpctl_handle connection,
 	dhcpctl_remote_object_t *ro;
 
 	if (h -> type != dhcpctl_remote_type)
-		return DHCP_R_INVALIDARG;
+		return ISC_R_INVALIDARG;
 	ro = (dhcpctl_remote_object_t *)h;
 
 	status = omapi_message_new (&message, MDL);

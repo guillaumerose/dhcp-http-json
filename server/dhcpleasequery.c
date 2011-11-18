@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2007,2009 by Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 2006-2007 by Internet Systems Consortium, Inc. ("ISC")
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -718,7 +718,7 @@ get_lq_query(struct lq6_state *lq)
 	 * Verify our lq_query structure is empty.
 	 */
 	if ((lq_query->data != NULL) || (lq_query->len != 0)) {
-		return DHCP_R_INVALIDARG;
+		return ISC_R_INVALIDARG;
 	}
 
 	oc = lookup_option(&dhcpv6_universe, packet->options, D6O_LQ_QUERY);

@@ -55,7 +55,7 @@
  */
 
 /*
- *	$Id: nameser.h,v 1.6.24.1 2009/11/20 01:49:01 sar Exp $
+ *	$Id: nameser.h,v 1.5.786.2 2009/07/24 22:04:52 sar Exp $
  */
 
 #ifndef _ARPA_NAMESER_H_
