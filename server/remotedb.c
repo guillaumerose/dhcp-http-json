@@ -100,7 +100,7 @@ find_haddr_with_remotedb(struct host_decl **hp, int htype, unsigned hlen,
 	
 	mac_string = print_hw_addr(htype, hlen, (unsigned char *)haddr);
 	
-	if (strlen(mac_string) < 17){
+	if (strlen(mac_string) < 18){
 		sprintf(request, "http://%s:%d%s/options?mac=%s",	
 				REMOTEDB_IP, 
 				REMOTEDB_PORT, 
