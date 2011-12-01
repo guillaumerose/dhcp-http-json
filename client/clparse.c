@@ -226,7 +226,7 @@ int read_client_conf_file (const char *name, struct interface_info *ip,
 	} while (1);
 	token = next_token (&val, (unsigned *)0, cfile);
 	status = (cfile -> warnings_occurred
-		  ? DHCP_R_BADPARSE
+		  ? ISC_R_BADPARSE
 		  : ISC_R_SUCCESS);
 	end_parse (&cfile);
 	return status;
@@ -550,17 +550,6 @@ void parse_client_statement (cfile, ip, config)
 		} else {
 			parse_warn (cfile, "hardware address parameter %s",
 				    "not allowed here.");
-			skip_to_semi (cfile);
-		}
-		return;
-
-	      case ANYCAST_MAC:
-		token = next_token(&val, NULL, cfile);
-		if (ip != NULL) {
-			parse_hardware_param(cfile, &ip->anycast_mac_addr);
-		} else {
-			parse_warn(cfile, "anycast mac address parameter "
-				   "not allowed here.");
 			skip_to_semi (cfile);
 		}
 		return;

@@ -3,7 +3,7 @@
    Parser for dhcpd config file... */
 
 /*
- * Copyright (c) 2004-2010 by Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (c) 2004-2009 by Internet Systems Consortium, Inc. ("ISC")
  * Copyright (c) 1995-2003 by Internet Software Consortium
  *
  * Permission to use, copy, modify, and distribute this software for any
@@ -61,17 +61,7 @@ void parse_trace_setup ()
 
 isc_result_t readconf ()
 {
-	isc_result_t res;
-
-	res = read_conf_file (path_dhcpd_conf, root_group, ROOT_GROUP, 0);
-#if defined(LDAP_CONFIGURATION)
-	if (res != ISC_R_SUCCESS)
-		return (res);
-
-	return ldap_read_config ();
-#else
-	return (res);
-#endif
+	return read_conf_file (path_dhcpd_conf, root_group, ROOT_GROUP, 0);
 }
 
 isc_result_t read_conf_file (const char *filename, struct group *group,
@@ -255,7 +245,7 @@ isc_result_t conf_file_subparse (struct parse *cfile, struct group *group,
 	} while (1);
 	token = next_token (&val, (unsigned *)0, cfile);
 
-	status = cfile->warnings_occurred ? DHCP_R_BADPARSE : ISC_R_SUCCESS;
+	status = cfile -> warnings_occurred ? ISC_R_BADPARSE : ISC_R_SUCCESS;
 	return status;
 }
 
@@ -314,7 +304,7 @@ isc_result_t lease_file_subparse (struct parse *cfile)
 
 	} while (1);
 
-	status = cfile->warnings_occurred ? DHCP_R_BADPARSE : ISC_R_SUCCESS;
+	status = cfile -> warnings_occurred ? ISC_R_BADPARSE : ISC_R_SUCCESS;
 	return status;
 }
 
@@ -561,6 +551,16 @@ int parse_statement (cfile, group, type, host_decl, declaration)
 
 	      case HARDWARE:
 		next_token (&val, (unsigned *)0, cfile);
+#ifdef DHCPv6
+		if (local_family == AF_INET6) {
+			parse_warn(cfile, "You can not use a hardware "
+			                  "parameter for DHCPv6 hosts. "
+					  "Use the host-identifier parameter "
+					  "instead.");
+			skip_to_semi(cfile);
+			break;
+		}
+#endif /* DHCPv6 */
 		memset (&hardware, 0, sizeof hardware);
 		if (host_decl && memcmp(&hardware, &(host_decl->interface),
 					sizeof(hardware)) != 0) {
@@ -752,6 +752,26 @@ int parse_statement (cfile, group, type, host_decl, declaration)
 				skip_to_semi (cfile);
 				option_dereference(&option, MDL);
 				return declaration;
+			}
+
+			/*
+			 * If the configuration attempts to define on option
+			 * that we ignore, then warn about it now.
+			 *
+			 * In DHCPv4 we do not use dhcp-renewal-time or
+			 * dhcp-rebinding-time, but we use these in DHCPv6.
+			 *
+			 * XXX: We may want to include a "blacklist" of 
+			 *      options we ignore in the future, as a table.
+			 */
+			if ((option->code == DHO_DHCP_LEASE_TIME) ||
+			    ((local_family != AF_INET6) && 
+			     ((option->code == DHO_DHCP_RENEWAL_TIME) ||
+			      (option->code == DHO_DHCP_REBINDING_TIME))))
+			{
+				log_error("WARNING: server ignoring option %s "
+				          "in configuration file.",
+                                          option->name);
 			}
 
 		      finish_option:
@@ -1006,10 +1026,6 @@ void parse_failover_peer (cfile, group, type)
 			tp = &peer->min_balance;
 			goto parse_idle;
 
-		      case AUTO_PARTNER_DOWN:
-			tp = &peer->auto_partner_down;
-			goto parse_idle;
-
 		      case MAX_RESPONSE_DELAY:
 			tp = &cp -> max_response_delay;
 		      parse_idle:
@@ -1129,10 +1145,11 @@ void parse_failover_peer (cfile, group, type)
 	if (!peer -> partner.address)
 		parse_warn (cfile, "peer address may not be omitted");
 
-	if (!peer->me.port)
-		peer->me.port = DEFAULT_FAILOVER_PORT;
-	if (!peer->partner.port)
-		peer->partner.port = DEFAULT_FAILOVER_PORT;
+	/* XXX - when/if we get a port number assigned, just set as default */
+	if (!peer -> me.port)
+		parse_warn (cfile, "local port may not be omitted");
+	if (!peer -> partner.port)
+		parse_warn (cfile, "peer port may not be omitted");
 
 	if (peer -> i_am == primary) {
 	    if (!peer -> hba) {
@@ -3105,16 +3122,6 @@ int parse_lease_declaration (struct lease **lp, struct parse *cfile)
 			}
 			goto do_binding_state;
 
-		      case REWIND:
-			seenbit = 512;
-			token = next_token(&val, NULL, cfile);
-			if (token != BINDING) {
-				parse_warn(cfile, "expecting 'binding'");
-				skip_to_semi(cfile);
-				break;
-			}
-			goto do_binding_state;
-
 		      case BINDING:
 			seenbit = 256;
 
@@ -3172,26 +3179,13 @@ int parse_lease_declaration (struct lease **lp, struct parse *cfile)
 			if (seenbit == 256) {
 				lease -> binding_state = new_state;
 
-				/*
-				 * Apply default/conservative next/rewind
-				 * binding states if they haven't been set
-				 * yet.  These defaults will be over-ridden if
-				 * they are set later in parsing.
-				 */
+				/* If no next binding state is specified, it's
+				   the same as the current state. */
 				if (!(seenmask & 128))
-				    lease->next_binding_state = new_state;
-
-				/* The most conservative rewind state. */
-				if (!(seenmask & 512))
-				    lease->rewind_binding_state = new_state;
-			} else if (seenbit == 128)
+				    lease -> next_binding_state = new_state;
+			} else
 				lease -> next_binding_state = new_state;
-			else if (seenbit == 512)
-				lease->rewind_binding_state = new_state;
-			else
-				log_fatal("Impossible condition at %s:%d.",
-					  MDL);
-
+				
 			parse_semi (cfile);
 			break;
 
@@ -3439,9 +3433,6 @@ int parse_lease_declaration (struct lease **lp, struct parse *cfile)
 				lease -> next_binding_state = FTS_FREE;
 		} else
 			lease -> next_binding_state = lease -> binding_state;
-
-		/* The most conservative rewind state implies no rewind. */
-		lease->rewind_binding_state = lease->binding_state;
 	}
 
 	if (!(seenmask & 65536))

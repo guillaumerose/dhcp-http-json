@@ -46,21 +46,15 @@ am__installdirs = "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(man5dir)" \
 	"$(DESTDIR)$(man8dir)" "$(DESTDIR)$(sysconfdir)"
 sbinPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(sbin_PROGRAMS)
-am_dhcpd_OBJECTS = dhcpd-dhcpd.$(OBJEXT) dhcpd-dhcp.$(OBJEXT) \
-	dhcpd-bootp.$(OBJEXT) dhcpd-confpars.$(OBJEXT) \
-	dhcpd-db.$(OBJEXT) dhcpd-class.$(OBJEXT) \
-	dhcpd-failover.$(OBJEXT) dhcpd-omapi.$(OBJEXT) \
-	dhcpd-mdb.$(OBJEXT) dhcpd-stables.$(OBJEXT) \
-	dhcpd-salloc.$(OBJEXT) dhcpd-ddns.$(OBJEXT) \
-	dhcpd-dhcpleasequery.$(OBJEXT) dhcpd-dhcpv6.$(OBJEXT) \
-	dhcpd-mdb6.$(OBJEXT) dhcpd-ldap.$(OBJEXT) \
-	dhcpd-ldap_casa.$(OBJEXT)
+am_dhcpd_OBJECTS = dhcpd.$(OBJEXT) dhcp.$(OBJEXT) bootp.$(OBJEXT) \
+	confpars.$(OBJEXT) db.$(OBJEXT) class.$(OBJEXT) \
+	failover.$(OBJEXT) omapi.$(OBJEXT) mdb.$(OBJEXT) \
+	stables.$(OBJEXT) salloc.$(OBJEXT) ddns.$(OBJEXT) \
+	dhcpleasequery.$(OBJEXT) dhcpv6.$(OBJEXT) mdb6.$(OBJEXT)
 dhcpd_OBJECTS = $(am_dhcpd_OBJECTS)
 dhcpd_DEPENDENCIES = ../common/libdhcp.a ../omapip/libomapi.a \
-	../dhcpctl/libdhcpctl.a ../bind/lib/libdns.a \
-	../bind/lib/libisc.a
-dhcpd_LINK = $(CCLD) $(dhcpd_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
-	$(LDFLAGS) -o $@
+	../dst/libdst.a ../dhcpctl/libdhcpctl.a ../minires/libres.a \
+	../omapip/libomapi.a
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/includes
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -110,7 +104,6 @@ INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
-LDAP_CFLAGS = @LDAP_CFLAGS@
 LDFLAGS = @LDFLAGS@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
@@ -123,7 +116,6 @@ PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
 PACKAGE_NAME = @PACKAGE_NAME@
 PACKAGE_STRING = @PACKAGE_STRING@
 PACKAGE_TARNAME = @PACKAGE_TARNAME@
-PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 RANLIB = @RANLIB@
@@ -179,12 +171,13 @@ AM_CPPFLAGS = -I.. -DLOCALSTATEDIR='"@localstatedir@"'
 dist_sysconf_DATA = dhcpd.conf
 dhcpd_SOURCES = dhcpd.c dhcp.c bootp.c confpars.c db.c class.c failover.c \
 		omapi.c mdb.c stables.c salloc.c ddns.c dhcpleasequery.c \
-		dhcpv6.c mdb6.c ldap.c ldap_casa.c
+		dhcpv6.c mdb6.c
 
-dhcpd_CFLAGS = $(LDAP_CFLAGS)
-dhcpd_LDADD = ../common/libdhcp.a ../omapip/libomapi.a \
-	      ../dhcpctl/libdhcpctl.a ../bind/lib/libdns.a \
-	      ../bind/lib/libisc.a
+
+# libomapi.a this is here twice to handle circular library dependencies :(
+dhcpd_LDADD = ../common/libdhcp.a ../omapip/libomapi.a ../dst/libdst.a \
+	      ../dhcpctl/libdhcpctl.a ../minires/libres.a \
+	      ../omapip/libomapi.a
 
 man_MANS = dhcpd.8 dhcpd.conf.5 dhcpd.leases.5
 EXTRA_DIST = $(man_MANS)
@@ -246,7 +239,7 @@ clean-sbinPROGRAMS:
 	-test -z "$(sbin_PROGRAMS)" || rm -f $(sbin_PROGRAMS)
 dhcpd$(EXEEXT): $(dhcpd_OBJECTS) $(dhcpd_DEPENDENCIES) 
 	@rm -f dhcpd$(EXEEXT)
-	$(dhcpd_LINK) $(dhcpd_OBJECTS) $(dhcpd_LDADD) $(LIBS)
+	$(LINK) $(dhcpd_OBJECTS) $(dhcpd_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -254,23 +247,21 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dhcpd-bootp.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dhcpd-class.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dhcpd-confpars.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dhcpd-db.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dhcpd-ddns.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dhcpd-dhcp.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dhcpd-dhcpd.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dhcpd-dhcpleasequery.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dhcpd-dhcpv6.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dhcpd-failover.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dhcpd-ldap.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dhcpd-ldap_casa.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dhcpd-mdb.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dhcpd-mdb6.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dhcpd-omapi.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dhcpd-salloc.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dhcpd-stables.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bootp.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/class.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/confpars.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/db.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ddns.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dhcp.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dhcpd.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dhcpleasequery.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dhcpv6.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/failover.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mdb.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mdb6.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/omapi.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/salloc.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stables.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -285,244 +276,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(COMPILE) -c `$(CYGPATH_W) '$<'`
-
-dhcpd-dhcpd.o: dhcpd.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -MT dhcpd-dhcpd.o -MD -MP -MF $(DEPDIR)/dhcpd-dhcpd.Tpo -c -o dhcpd-dhcpd.o `test -f 'dhcpd.c' || echo '$(srcdir)/'`dhcpd.c
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/dhcpd-dhcpd.Tpo $(DEPDIR)/dhcpd-dhcpd.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='dhcpd.c' object='dhcpd-dhcpd.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -c -o dhcpd-dhcpd.o `test -f 'dhcpd.c' || echo '$(srcdir)/'`dhcpd.c
-
-dhcpd-dhcpd.obj: dhcpd.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -MT dhcpd-dhcpd.obj -MD -MP -MF $(DEPDIR)/dhcpd-dhcpd.Tpo -c -o dhcpd-dhcpd.obj `if test -f 'dhcpd.c'; then $(CYGPATH_W) 'dhcpd.c'; else $(CYGPATH_W) '$(srcdir)/dhcpd.c'; fi`
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/dhcpd-dhcpd.Tpo $(DEPDIR)/dhcpd-dhcpd.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='dhcpd.c' object='dhcpd-dhcpd.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -c -o dhcpd-dhcpd.obj `if test -f 'dhcpd.c'; then $(CYGPATH_W) 'dhcpd.c'; else $(CYGPATH_W) '$(srcdir)/dhcpd.c'; fi`
-
-dhcpd-dhcp.o: dhcp.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -MT dhcpd-dhcp.o -MD -MP -MF $(DEPDIR)/dhcpd-dhcp.Tpo -c -o dhcpd-dhcp.o `test -f 'dhcp.c' || echo '$(srcdir)/'`dhcp.c
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/dhcpd-dhcp.Tpo $(DEPDIR)/dhcpd-dhcp.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='dhcp.c' object='dhcpd-dhcp.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -c -o dhcpd-dhcp.o `test -f 'dhcp.c' || echo '$(srcdir)/'`dhcp.c
-
-dhcpd-dhcp.obj: dhcp.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -MT dhcpd-dhcp.obj -MD -MP -MF $(DEPDIR)/dhcpd-dhcp.Tpo -c -o dhcpd-dhcp.obj `if test -f 'dhcp.c'; then $(CYGPATH_W) 'dhcp.c'; else $(CYGPATH_W) '$(srcdir)/dhcp.c'; fi`
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/dhcpd-dhcp.Tpo $(DEPDIR)/dhcpd-dhcp.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='dhcp.c' object='dhcpd-dhcp.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -c -o dhcpd-dhcp.obj `if test -f 'dhcp.c'; then $(CYGPATH_W) 'dhcp.c'; else $(CYGPATH_W) '$(srcdir)/dhcp.c'; fi`
-
-dhcpd-bootp.o: bootp.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -MT dhcpd-bootp.o -MD -MP -MF $(DEPDIR)/dhcpd-bootp.Tpo -c -o dhcpd-bootp.o `test -f 'bootp.c' || echo '$(srcdir)/'`bootp.c
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/dhcpd-bootp.Tpo $(DEPDIR)/dhcpd-bootp.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='bootp.c' object='dhcpd-bootp.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -c -o dhcpd-bootp.o `test -f 'bootp.c' || echo '$(srcdir)/'`bootp.c
-
-dhcpd-bootp.obj: bootp.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -MT dhcpd-bootp.obj -MD -MP -MF $(DEPDIR)/dhcpd-bootp.Tpo -c -o dhcpd-bootp.obj `if test -f 'bootp.c'; then $(CYGPATH_W) 'bootp.c'; else $(CYGPATH_W) '$(srcdir)/bootp.c'; fi`
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/dhcpd-bootp.Tpo $(DEPDIR)/dhcpd-bootp.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='bootp.c' object='dhcpd-bootp.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -c -o dhcpd-bootp.obj `if test -f 'bootp.c'; then $(CYGPATH_W) 'bootp.c'; else $(CYGPATH_W) '$(srcdir)/bootp.c'; fi`
-
-dhcpd-confpars.o: confpars.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -MT dhcpd-confpars.o -MD -MP -MF $(DEPDIR)/dhcpd-confpars.Tpo -c -o dhcpd-confpars.o `test -f 'confpars.c' || echo '$(srcdir)/'`confpars.c
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/dhcpd-confpars.Tpo $(DEPDIR)/dhcpd-confpars.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='confpars.c' object='dhcpd-confpars.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -c -o dhcpd-confpars.o `test -f 'confpars.c' || echo '$(srcdir)/'`confpars.c
-
-dhcpd-confpars.obj: confpars.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -MT dhcpd-confpars.obj -MD -MP -MF $(DEPDIR)/dhcpd-confpars.Tpo -c -o dhcpd-confpars.obj `if test -f 'confpars.c'; then $(CYGPATH_W) 'confpars.c'; else $(CYGPATH_W) '$(srcdir)/confpars.c'; fi`
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/dhcpd-confpars.Tpo $(DEPDIR)/dhcpd-confpars.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='confpars.c' object='dhcpd-confpars.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -c -o dhcpd-confpars.obj `if test -f 'confpars.c'; then $(CYGPATH_W) 'confpars.c'; else $(CYGPATH_W) '$(srcdir)/confpars.c'; fi`
-
-dhcpd-db.o: db.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -MT dhcpd-db.o -MD -MP -MF $(DEPDIR)/dhcpd-db.Tpo -c -o dhcpd-db.o `test -f 'db.c' || echo '$(srcdir)/'`db.c
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/dhcpd-db.Tpo $(DEPDIR)/dhcpd-db.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='db.c' object='dhcpd-db.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -c -o dhcpd-db.o `test -f 'db.c' || echo '$(srcdir)/'`db.c
-
-dhcpd-db.obj: db.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -MT dhcpd-db.obj -MD -MP -MF $(DEPDIR)/dhcpd-db.Tpo -c -o dhcpd-db.obj `if test -f 'db.c'; then $(CYGPATH_W) 'db.c'; else $(CYGPATH_W) '$(srcdir)/db.c'; fi`
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/dhcpd-db.Tpo $(DEPDIR)/dhcpd-db.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='db.c' object='dhcpd-db.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -c -o dhcpd-db.obj `if test -f 'db.c'; then $(CYGPATH_W) 'db.c'; else $(CYGPATH_W) '$(srcdir)/db.c'; fi`
-
-dhcpd-class.o: class.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -MT dhcpd-class.o -MD -MP -MF $(DEPDIR)/dhcpd-class.Tpo -c -o dhcpd-class.o `test -f 'class.c' || echo '$(srcdir)/'`class.c
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/dhcpd-class.Tpo $(DEPDIR)/dhcpd-class.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='class.c' object='dhcpd-class.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -c -o dhcpd-class.o `test -f 'class.c' || echo '$(srcdir)/'`class.c
-
-dhcpd-class.obj: class.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -MT dhcpd-class.obj -MD -MP -MF $(DEPDIR)/dhcpd-class.Tpo -c -o dhcpd-class.obj `if test -f 'class.c'; then $(CYGPATH_W) 'class.c'; else $(CYGPATH_W) '$(srcdir)/class.c'; fi`
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/dhcpd-class.Tpo $(DEPDIR)/dhcpd-class.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='class.c' object='dhcpd-class.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -c -o dhcpd-class.obj `if test -f 'class.c'; then $(CYGPATH_W) 'class.c'; else $(CYGPATH_W) '$(srcdir)/class.c'; fi`
-
-dhcpd-failover.o: failover.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -MT dhcpd-failover.o -MD -MP -MF $(DEPDIR)/dhcpd-failover.Tpo -c -o dhcpd-failover.o `test -f 'failover.c' || echo '$(srcdir)/'`failover.c
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/dhcpd-failover.Tpo $(DEPDIR)/dhcpd-failover.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='failover.c' object='dhcpd-failover.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -c -o dhcpd-failover.o `test -f 'failover.c' || echo '$(srcdir)/'`failover.c
-
-dhcpd-failover.obj: failover.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -MT dhcpd-failover.obj -MD -MP -MF $(DEPDIR)/dhcpd-failover.Tpo -c -o dhcpd-failover.obj `if test -f 'failover.c'; then $(CYGPATH_W) 'failover.c'; else $(CYGPATH_W) '$(srcdir)/failover.c'; fi`
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/dhcpd-failover.Tpo $(DEPDIR)/dhcpd-failover.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='failover.c' object='dhcpd-failover.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -c -o dhcpd-failover.obj `if test -f 'failover.c'; then $(CYGPATH_W) 'failover.c'; else $(CYGPATH_W) '$(srcdir)/failover.c'; fi`
-
-dhcpd-omapi.o: omapi.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -MT dhcpd-omapi.o -MD -MP -MF $(DEPDIR)/dhcpd-omapi.Tpo -c -o dhcpd-omapi.o `test -f 'omapi.c' || echo '$(srcdir)/'`omapi.c
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/dhcpd-omapi.Tpo $(DEPDIR)/dhcpd-omapi.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='omapi.c' object='dhcpd-omapi.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -c -o dhcpd-omapi.o `test -f 'omapi.c' || echo '$(srcdir)/'`omapi.c
-
-dhcpd-omapi.obj: omapi.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -MT dhcpd-omapi.obj -MD -MP -MF $(DEPDIR)/dhcpd-omapi.Tpo -c -o dhcpd-omapi.obj `if test -f 'omapi.c'; then $(CYGPATH_W) 'omapi.c'; else $(CYGPATH_W) '$(srcdir)/omapi.c'; fi`
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/dhcpd-omapi.Tpo $(DEPDIR)/dhcpd-omapi.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='omapi.c' object='dhcpd-omapi.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -c -o dhcpd-omapi.obj `if test -f 'omapi.c'; then $(CYGPATH_W) 'omapi.c'; else $(CYGPATH_W) '$(srcdir)/omapi.c'; fi`
-
-dhcpd-mdb.o: mdb.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -MT dhcpd-mdb.o -MD -MP -MF $(DEPDIR)/dhcpd-mdb.Tpo -c -o dhcpd-mdb.o `test -f 'mdb.c' || echo '$(srcdir)/'`mdb.c
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/dhcpd-mdb.Tpo $(DEPDIR)/dhcpd-mdb.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='mdb.c' object='dhcpd-mdb.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -c -o dhcpd-mdb.o `test -f 'mdb.c' || echo '$(srcdir)/'`mdb.c
-
-dhcpd-mdb.obj: mdb.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -MT dhcpd-mdb.obj -MD -MP -MF $(DEPDIR)/dhcpd-mdb.Tpo -c -o dhcpd-mdb.obj `if test -f 'mdb.c'; then $(CYGPATH_W) 'mdb.c'; else $(CYGPATH_W) '$(srcdir)/mdb.c'; fi`
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/dhcpd-mdb.Tpo $(DEPDIR)/dhcpd-mdb.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='mdb.c' object='dhcpd-mdb.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -c -o dhcpd-mdb.obj `if test -f 'mdb.c'; then $(CYGPATH_W) 'mdb.c'; else $(CYGPATH_W) '$(srcdir)/mdb.c'; fi`
-
-dhcpd-stables.o: stables.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -MT dhcpd-stables.o -MD -MP -MF $(DEPDIR)/dhcpd-stables.Tpo -c -o dhcpd-stables.o `test -f 'stables.c' || echo '$(srcdir)/'`stables.c
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/dhcpd-stables.Tpo $(DEPDIR)/dhcpd-stables.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='stables.c' object='dhcpd-stables.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -c -o dhcpd-stables.o `test -f 'stables.c' || echo '$(srcdir)/'`stables.c
-
-dhcpd-stables.obj: stables.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -MT dhcpd-stables.obj -MD -MP -MF $(DEPDIR)/dhcpd-stables.Tpo -c -o dhcpd-stables.obj `if test -f 'stables.c'; then $(CYGPATH_W) 'stables.c'; else $(CYGPATH_W) '$(srcdir)/stables.c'; fi`
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/dhcpd-stables.Tpo $(DEPDIR)/dhcpd-stables.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='stables.c' object='dhcpd-stables.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -c -o dhcpd-stables.obj `if test -f 'stables.c'; then $(CYGPATH_W) 'stables.c'; else $(CYGPATH_W) '$(srcdir)/stables.c'; fi`
-
-dhcpd-salloc.o: salloc.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -MT dhcpd-salloc.o -MD -MP -MF $(DEPDIR)/dhcpd-salloc.Tpo -c -o dhcpd-salloc.o `test -f 'salloc.c' || echo '$(srcdir)/'`salloc.c
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/dhcpd-salloc.Tpo $(DEPDIR)/dhcpd-salloc.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='salloc.c' object='dhcpd-salloc.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -c -o dhcpd-salloc.o `test -f 'salloc.c' || echo '$(srcdir)/'`salloc.c
-
-dhcpd-salloc.obj: salloc.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -MT dhcpd-salloc.obj -MD -MP -MF $(DEPDIR)/dhcpd-salloc.Tpo -c -o dhcpd-salloc.obj `if test -f 'salloc.c'; then $(CYGPATH_W) 'salloc.c'; else $(CYGPATH_W) '$(srcdir)/salloc.c'; fi`
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/dhcpd-salloc.Tpo $(DEPDIR)/dhcpd-salloc.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='salloc.c' object='dhcpd-salloc.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -c -o dhcpd-salloc.obj `if test -f 'salloc.c'; then $(CYGPATH_W) 'salloc.c'; else $(CYGPATH_W) '$(srcdir)/salloc.c'; fi`
-
-dhcpd-ddns.o: ddns.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -MT dhcpd-ddns.o -MD -MP -MF $(DEPDIR)/dhcpd-ddns.Tpo -c -o dhcpd-ddns.o `test -f 'ddns.c' || echo '$(srcdir)/'`ddns.c
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/dhcpd-ddns.Tpo $(DEPDIR)/dhcpd-ddns.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='ddns.c' object='dhcpd-ddns.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -c -o dhcpd-ddns.o `test -f 'ddns.c' || echo '$(srcdir)/'`ddns.c
-
-dhcpd-ddns.obj: ddns.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -MT dhcpd-ddns.obj -MD -MP -MF $(DEPDIR)/dhcpd-ddns.Tpo -c -o dhcpd-ddns.obj `if test -f 'ddns.c'; then $(CYGPATH_W) 'ddns.c'; else $(CYGPATH_W) '$(srcdir)/ddns.c'; fi`
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/dhcpd-ddns.Tpo $(DEPDIR)/dhcpd-ddns.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='ddns.c' object='dhcpd-ddns.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -c -o dhcpd-ddns.obj `if test -f 'ddns.c'; then $(CYGPATH_W) 'ddns.c'; else $(CYGPATH_W) '$(srcdir)/ddns.c'; fi`
-
-dhcpd-dhcpleasequery.o: dhcpleasequery.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -MT dhcpd-dhcpleasequery.o -MD -MP -MF $(DEPDIR)/dhcpd-dhcpleasequery.Tpo -c -o dhcpd-dhcpleasequery.o `test -f 'dhcpleasequery.c' || echo '$(srcdir)/'`dhcpleasequery.c
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/dhcpd-dhcpleasequery.Tpo $(DEPDIR)/dhcpd-dhcpleasequery.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='dhcpleasequery.c' object='dhcpd-dhcpleasequery.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -c -o dhcpd-dhcpleasequery.o `test -f 'dhcpleasequery.c' || echo '$(srcdir)/'`dhcpleasequery.c
-
-dhcpd-dhcpleasequery.obj: dhcpleasequery.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -MT dhcpd-dhcpleasequery.obj -MD -MP -MF $(DEPDIR)/dhcpd-dhcpleasequery.Tpo -c -o dhcpd-dhcpleasequery.obj `if test -f 'dhcpleasequery.c'; then $(CYGPATH_W) 'dhcpleasequery.c'; else $(CYGPATH_W) '$(srcdir)/dhcpleasequery.c'; fi`
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/dhcpd-dhcpleasequery.Tpo $(DEPDIR)/dhcpd-dhcpleasequery.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='dhcpleasequery.c' object='dhcpd-dhcpleasequery.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -c -o dhcpd-dhcpleasequery.obj `if test -f 'dhcpleasequery.c'; then $(CYGPATH_W) 'dhcpleasequery.c'; else $(CYGPATH_W) '$(srcdir)/dhcpleasequery.c'; fi`
-
-dhcpd-dhcpv6.o: dhcpv6.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -MT dhcpd-dhcpv6.o -MD -MP -MF $(DEPDIR)/dhcpd-dhcpv6.Tpo -c -o dhcpd-dhcpv6.o `test -f 'dhcpv6.c' || echo '$(srcdir)/'`dhcpv6.c
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/dhcpd-dhcpv6.Tpo $(DEPDIR)/dhcpd-dhcpv6.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='dhcpv6.c' object='dhcpd-dhcpv6.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -c -o dhcpd-dhcpv6.o `test -f 'dhcpv6.c' || echo '$(srcdir)/'`dhcpv6.c
-
-dhcpd-dhcpv6.obj: dhcpv6.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -MT dhcpd-dhcpv6.obj -MD -MP -MF $(DEPDIR)/dhcpd-dhcpv6.Tpo -c -o dhcpd-dhcpv6.obj `if test -f 'dhcpv6.c'; then $(CYGPATH_W) 'dhcpv6.c'; else $(CYGPATH_W) '$(srcdir)/dhcpv6.c'; fi`
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/dhcpd-dhcpv6.Tpo $(DEPDIR)/dhcpd-dhcpv6.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='dhcpv6.c' object='dhcpd-dhcpv6.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -c -o dhcpd-dhcpv6.obj `if test -f 'dhcpv6.c'; then $(CYGPATH_W) 'dhcpv6.c'; else $(CYGPATH_W) '$(srcdir)/dhcpv6.c'; fi`
-
-dhcpd-mdb6.o: mdb6.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -MT dhcpd-mdb6.o -MD -MP -MF $(DEPDIR)/dhcpd-mdb6.Tpo -c -o dhcpd-mdb6.o `test -f 'mdb6.c' || echo '$(srcdir)/'`mdb6.c
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/dhcpd-mdb6.Tpo $(DEPDIR)/dhcpd-mdb6.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='mdb6.c' object='dhcpd-mdb6.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -c -o dhcpd-mdb6.o `test -f 'mdb6.c' || echo '$(srcdir)/'`mdb6.c
-
-dhcpd-mdb6.obj: mdb6.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -MT dhcpd-mdb6.obj -MD -MP -MF $(DEPDIR)/dhcpd-mdb6.Tpo -c -o dhcpd-mdb6.obj `if test -f 'mdb6.c'; then $(CYGPATH_W) 'mdb6.c'; else $(CYGPATH_W) '$(srcdir)/mdb6.c'; fi`
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/dhcpd-mdb6.Tpo $(DEPDIR)/dhcpd-mdb6.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='mdb6.c' object='dhcpd-mdb6.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -c -o dhcpd-mdb6.obj `if test -f 'mdb6.c'; then $(CYGPATH_W) 'mdb6.c'; else $(CYGPATH_W) '$(srcdir)/mdb6.c'; fi`
-
-dhcpd-ldap.o: ldap.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -MT dhcpd-ldap.o -MD -MP -MF $(DEPDIR)/dhcpd-ldap.Tpo -c -o dhcpd-ldap.o `test -f 'ldap.c' || echo '$(srcdir)/'`ldap.c
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/dhcpd-ldap.Tpo $(DEPDIR)/dhcpd-ldap.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='ldap.c' object='dhcpd-ldap.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -c -o dhcpd-ldap.o `test -f 'ldap.c' || echo '$(srcdir)/'`ldap.c
-
-dhcpd-ldap.obj: ldap.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -MT dhcpd-ldap.obj -MD -MP -MF $(DEPDIR)/dhcpd-ldap.Tpo -c -o dhcpd-ldap.obj `if test -f 'ldap.c'; then $(CYGPATH_W) 'ldap.c'; else $(CYGPATH_W) '$(srcdir)/ldap.c'; fi`
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/dhcpd-ldap.Tpo $(DEPDIR)/dhcpd-ldap.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='ldap.c' object='dhcpd-ldap.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -c -o dhcpd-ldap.obj `if test -f 'ldap.c'; then $(CYGPATH_W) 'ldap.c'; else $(CYGPATH_W) '$(srcdir)/ldap.c'; fi`
-
-dhcpd-ldap_casa.o: ldap_casa.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -MT dhcpd-ldap_casa.o -MD -MP -MF $(DEPDIR)/dhcpd-ldap_casa.Tpo -c -o dhcpd-ldap_casa.o `test -f 'ldap_casa.c' || echo '$(srcdir)/'`ldap_casa.c
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/dhcpd-ldap_casa.Tpo $(DEPDIR)/dhcpd-ldap_casa.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='ldap_casa.c' object='dhcpd-ldap_casa.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -c -o dhcpd-ldap_casa.o `test -f 'ldap_casa.c' || echo '$(srcdir)/'`ldap_casa.c
-
-dhcpd-ldap_casa.obj: ldap_casa.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -MT dhcpd-ldap_casa.obj -MD -MP -MF $(DEPDIR)/dhcpd-ldap_casa.Tpo -c -o dhcpd-ldap_casa.obj `if test -f 'ldap_casa.c'; then $(CYGPATH_W) 'ldap_casa.c'; else $(CYGPATH_W) '$(srcdir)/ldap_casa.c'; fi`
-@am__fastdepCC_TRUE@	mv -f $(DEPDIR)/dhcpd-ldap_casa.Tpo $(DEPDIR)/dhcpd-ldap_casa.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='ldap_casa.c' object='dhcpd-ldap_casa.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(dhcpd_CFLAGS) $(CFLAGS) -c -o dhcpd-ldap_casa.obj `if test -f 'ldap_casa.c'; then $(CYGPATH_W) 'ldap_casa.c'; else $(CYGPATH_W) '$(srcdir)/ldap_casa.c'; fi`
 install-man5: $(man5_MANS) $(man_MANS)
 	@$(NORMAL_INSTALL)
 	test -z "$(man5dir)" || $(MKDIR_P) "$(DESTDIR)$(man5dir)"

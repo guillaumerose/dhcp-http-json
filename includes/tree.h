@@ -115,7 +115,7 @@ struct binding_value {
 		struct data_string data;
 		unsigned long intval;
 		int boolean;
-#if defined (NSUPDATE_OLD)
+#if defined (NSUPDATE)
 		ns_updrec *dns;
 #endif
 		struct fundef *fundef;
@@ -197,8 +197,7 @@ enum expr_op {
 	expr_ucase,
 	expr_lcase,
 	expr_regex_match,
-	expr_iregex_match,
-	expr_gethostname
+	expr_iregex_match
 };
 
 struct expression {

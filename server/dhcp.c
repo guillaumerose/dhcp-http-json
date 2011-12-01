@@ -3,7 +3,7 @@
    DHCP Protocol engine. */
 
 /*
- * Copyright (c) 2004-2010 by Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (c) 2004-2009 by Internet Systems Consortium, Inc. ("ISC")
  * Copyright (c) 1995-2003 by Internet Software Consortium
  *
  * Permission to use, copy, modify, and distribute this software for any
@@ -38,20 +38,16 @@
 #include <sys/time.h>
 
 static void commit_leases_ackout(void *foo);
-static void maybe_return_agent_options(struct packet *packet,
-				       struct option_state *options);
 
 int outstanding_pings;
 
 struct leasequeue *ackqueue_head, *ackqueue_tail;
 static struct leasequeue *free_ackqueue;
-static struct timeval max_fsync;
-
+static struct timeval next_fsync;
 int outstanding_acks;
 int max_outstanding_acks = DEFAULT_DELAYED_ACK;
 int max_ack_delay_secs = DEFAULT_ACK_DELAY_SECS;
 int max_ack_delay_usecs = DEFAULT_ACK_DELAY_USECS;
-int min_ack_delay_usecs = DEFAULT_MIN_ACK_DELAY_USECS;
 
 static char dhcp_message [256];
 static int site_code_min;
@@ -314,19 +310,12 @@ void dhcpdiscover (packet, ms_nulltp)
 	if (lease && lease -> pool && lease -> pool -> failover_peer) {
 		peer = lease -> pool -> failover_peer;
 
-		/*
-		 * If the lease is ours to (re)allocate, then allocate it.
-		 *
+		/* If the lease is ours to allocate, then allocate it.
 		 * If the lease is active, it belongs to the client.  This
 		 * is the right lease, if we are to offer one.  We decide
 		 * whether or not to offer later on.
-		 *
-		 * If the lease was last active, and we've reached this
-		 * point, then it was last active with the same client.  We
-		 * can safely re-activate the lease with this client.
 		 */
 		if (lease->binding_state == FTS_ACTIVE ||
-		    lease->rewind_binding_state == FTS_ACTIVE ||
 		    lease_mine_to_reallocate(lease)) {
 			; /* This space intentionally left blank. */
 
@@ -530,18 +519,13 @@ void dhcprequest (packet, ms_nulltp, ip_lease)
 			goto out;
 		}
 
-		/*
-		 * If the lease is in a transitional state, we can't
-		 * renew it unless we can rewind it to a non-transitional
-		 * state (active, free, or backup).  lease_mine_to_reallocate()
-		 * checks for free/backup, so we only need to check for active.
-		 */
-		if ((lease->binding_state == FTS_RELEASED ||
-		     lease->binding_state == FTS_EXPIRED) &&
-		    lease->rewind_binding_state != FTS_ACTIVE &&
-		    !lease_mine_to_reallocate(lease)) {
-			log_debug("%s: lease in transition state %s", msgbuf,
-				  (lease->binding_state == FTS_RELEASED)
+		/* If the lease is in a transitional state, we can't
+		   renew it. */
+		if ((lease -> binding_state == FTS_RELEASED ||
+		     lease -> binding_state == FTS_EXPIRED) &&
+		    !lease_mine_to_reallocate (lease)) {
+			log_debug ("%s: lease in transition state %s", msgbuf,
+				   lease -> binding_state == FTS_RELEASED
 				   ? "released" : "expired");
 			goto out;
 		}
@@ -1055,8 +1039,6 @@ void dhcpinform (packet, ms_nulltp)
 	memset (&raw, 0, sizeof raw);
 	outgoing.raw = &raw;
 
-	maybe_return_agent_options(packet, options);
-
 	/* Execute statements in scope starting with the subnet scope. */
 	if (subnet)
 		execute_statements_in_scope ((struct binding_value **)0,
@@ -1222,13 +1204,6 @@ void dhcpinform (packet, ms_nulltp)
 		}
 	}
 
-	/*
-	 * Remove any time options, per section 3.4 RFC 2131
-	 */
-	delete_option(&dhcp_universe, options, DHO_DHCP_LEASE_TIME);
-	delete_option(&dhcp_universe, options, DHO_DHCP_RENEWAL_TIME);
-	delete_option(&dhcp_universe, options, DHO_DHCP_REBINDING_TIME);
-
 	/* Set up the option buffer... */
 	outgoing.packet_length =
 		cons_options (packet, outgoing.raw, (struct lease *)0,
@@ -1324,6 +1299,7 @@ void nak_lease (packet, cip)
 	struct dhcp_packet raw;
 	unsigned char nak = DHCPNAK;
 	struct packet outgoing;
+	struct hardware hto;
 	unsigned i;
 	struct option_state *options = (struct option_state *)0;
 	struct option_cache *oc = (struct option_cache *)0;
@@ -1425,11 +1401,20 @@ void nak_lease (packet, cip)
 	      ? inet_ntoa (packet -> raw -> giaddr)
 	      : packet -> interface -> name);
 
+
+
 #ifdef DEBUG_PACKET
 	dump_packet (packet);
 	dump_raw ((unsigned char *)packet -> raw, packet -> packet_length);
 	dump_packet (&outgoing);
 	dump_raw ((unsigned char *)&raw, outgoing.packet_length);
+#endif
+
+#if 0
+	hto.hbuf [0] = packet -> raw -> htype;
+	hto.hlen = packet -> raw -> hlen;
+	memcpy (&hto.hbuf [1], packet -> raw -> chaddr, hto.hlen);
+	hto.hlen++;
 #endif
 
 	/* Set up the common stuff... */
@@ -1453,9 +1438,10 @@ void nak_lease (packet, cip)
 			to.sin_port = remote_port; /* for testing. */
 
 		if (fallback_interface) {
-			result = send_packet(fallback_interface, packet, &raw,
-					     outgoing.packet_length, from, &to,
-					     NULL);
+			result = send_packet (fallback_interface,
+					      packet, &raw,
+					      outgoing.packet_length,
+					      from, &to, &hto);
 			return;
 		}
 	} else {
@@ -1464,8 +1450,9 @@ void nak_lease (packet, cip)
 	}
 
 	errno = 0;
-	result = send_packet(packet->interface, packet, &raw,
-			     outgoing.packet_length, from, &to, NULL);
+	result = send_packet (packet -> interface,
+			      packet, &raw, outgoing.packet_length,
+			      from, &to, (struct hardware *)0);
 }
 
 void ack_lease (packet, lease, offer, when, msg, ms_nulltp, hp)
@@ -1526,7 +1513,34 @@ void ack_lease (packet, lease, offer, when, msg, ms_nulltp, hp)
 			   packet -> options, DHO_DHCP_SERVER_IDENTIFIER))
 		state -> got_server_identifier = 1;
 
-	maybe_return_agent_options(packet, state->options);
+	/* If there were agent options in the incoming packet, return
+	 * them.  Do not return the agent options if they were stashed
+	 * on the lease.  We do not check giaddr to detect the presence of
+	 * a relay, as this excludes "l2" relay agents which have no giaddr
+	 * to set.
+	 *
+	 * XXX: If the user configures options for the relay agent information
+	 * (state->options->universes[agent_universe.index] is not NULL),
+	 * we're still required to duplicate other values provided by the
+	 * relay agent.  So we need to merge the old values not configured
+	 * by the user into the new state, not just give up.
+	 */
+	if (!packet->agent_options_stashed &&
+	    packet->options->universe_count > agent_universe.index &&
+	    packet->options->universes[agent_universe.index] != NULL &&
+	    (state->options->universe_count <= agent_universe.index ||
+	     state->options->universes[agent_universe.index] == NULL)) {
+		option_chain_head_reference
+		    ((struct option_chain_head **)
+		     &(state -> options -> universes [agent_universe.index]),
+		     (struct option_chain_head *)
+		     packet -> options -> universes [agent_universe.index],
+		     MDL);
+
+		if (state->options->universe_count <= agent_universe.index)
+			state->options->universe_count =
+						agent_universe.index + 1;
+	}
 
 	/* If we are offering a lease that is still currently valid, preserve
 	   the events.  We need to do this because if the client does not
@@ -1748,17 +1762,6 @@ void ack_lease (packet, lease, offer, when, msg, ms_nulltp, hp)
 					     packet -> raw -> chaddr,
 					     packet -> raw -> hlen,
 					     MDL);
-			for (h = hp; h; h = h -> n_ipaddr) {
-				if (!h -> fixed_addr)
-					break;
-			}
-			if (h)
-				host_reference (&host, h, MDL);
-			if (hp != NULL)
-				host_dereference(&hp, MDL);
-		}
-		if (!host) {
-			find_hosts_by_option(&hp, packet, packet->options, MDL);
 			for (h = hp; h; h = h -> n_ipaddr) {
 				if (!h -> fixed_addr)
 					break;
@@ -2566,38 +2569,39 @@ void ack_lease (packet, lease, offer, when, msg, ms_nulltp, hp)
 			option_cache_dereference (&oc, MDL);
 		}
 
-		/*
-		 * Validate any configured renew or rebinding times against
-		 * the determined lease time.  Do rebinding first so that
-		 * the renew time can be validated against the rebind time.
-		 */
-		if ((oc = lookup_option(&dhcp_universe, state->options,
-					DHO_DHCP_REBINDING_TIME)) != NULL &&
-		    evaluate_option_cache(&d1, packet, lease, NULL,
-					  packet->options, state->options,
-					  &lease->scope, oc, MDL)) {
-			TIME rebind_time = getULong(d1.data);
-
-			/* Drop the configured (invalid) rebinding time. */
-			if (rebind_time >= offered_lease_time)
-				delete_option(&dhcp_universe, state->options,
-					      DHO_DHCP_REBINDING_TIME);
-			else /* XXX: variable is reused. */
-				offered_lease_time = rebind_time;
-
-			data_string_forget(&d1, MDL);
+		/* Renewal time is lease time * 0.5. */
+		offered_lease_time /= 2;
+		putULong(state->renewal, (u_int32_t)offered_lease_time);
+		i = DHO_DHCP_RENEWAL_TIME;
+		oc = (struct option_cache *)0;
+		if (option_cache_allocate (&oc, MDL)) {
+			if (make_const_data(&oc->expression, state->renewal,
+					    4, 0, 0, MDL)) {
+				option_code_hash_lookup(&oc->option,
+							dhcp_universe.code_hash,
+							&i, 0, MDL);
+				save_option (&dhcp_universe,
+					     state -> options, oc);
+			}
+			option_cache_dereference (&oc, MDL);
 		}
 
-		if ((oc = lookup_option(&dhcp_universe, state->options,
-					DHO_DHCP_RENEWAL_TIME)) != NULL &&
-		    evaluate_option_cache(&d1, packet, lease, NULL,
-					  packet->options, state->options,
-					  &lease->scope, oc, MDL)) {
-			if (getULong(d1.data) >= offered_lease_time)
-				delete_option(&dhcp_universe, state->options,
-					      DHO_DHCP_RENEWAL_TIME);
-
-			data_string_forget(&d1, MDL);
+		/* Rebinding time is lease time * 0.875. */
+		offered_lease_time += (offered_lease_time / 2
+				       + offered_lease_time / 4);
+		putULong(state->rebind, (u_int32_t)offered_lease_time);
+		i = DHO_DHCP_REBINDING_TIME;
+		oc = (struct option_cache *)0;
+		if (option_cache_allocate (&oc, MDL)) {
+			if (make_const_data(&oc->expression, state->rebind,
+					    4, 0, 0, MDL)) {
+				option_code_hash_lookup(&oc->option,
+							dhcp_universe.code_hash,
+							&i, 0, MDL);
+				save_option (&dhcp_universe,
+					     state -> options, oc);
+			}
+			option_cache_dereference (&oc, MDL);
 		}
 	} else {
 		/* XXXSK: should we use get_server_source_address() here? */
@@ -2845,13 +2849,11 @@ void ack_lease (packet, lease, offer, when, msg, ms_nulltp, hp)
 	}
 }
 
-/*
- * CC: queue single ACK:
- * - write the lease (but do not fsync it yet)
- * - add to double linked list
- * - commit if more than xx ACKs pending
- * - if necessary set the max timer and bump the next timer
- *   but only up to the max timer value.
+/* CC: queue single ACK:
+   - write the lease (but do not fsync it yet)
+   - add to double linked list
+   - commit if more than xx ACKs pending
+   - Not yet: schedule a fsync at the next interval (1 second?)
  */
 
 void
@@ -2881,44 +2883,33 @@ delayed_ack_enqueue(struct lease *lease)
 		q->next->prev = q;
 
 	outstanding_acks++;
-	if (outstanding_acks > max_outstanding_acks) {
+	if (outstanding_acks > max_outstanding_acks) 
 		commit_leases();
 
-		/* Reset max_fsync and cancel any pending timeout. */
-		memset(&max_fsync, 0, sizeof(max_fsync));
-		cancel_timeout(commit_leases_ackout, NULL);
-	} else {
-		struct timeval next_fsync;
+	/* If next_fsync is not set, schedule an fsync. */
+	if (next_fsync.tv_sec == 0 && next_fsync.tv_usec == 0) {
+		next_fsync.tv_sec = cur_tv.tv_sec + max_ack_delay_secs;
+		next_fsync.tv_usec = cur_tv.tv_usec + max_ack_delay_usecs;
 
-		if (max_fsync.tv_sec == 0 && max_fsync.tv_usec == 0) {
-			/* set the maximum time we'll wait */
-			max_fsync.tv_sec = cur_tv.tv_sec + max_ack_delay_secs;
-			max_fsync.tv_usec = cur_tv.tv_usec +
-				max_ack_delay_usecs;
-
-			if (max_fsync.tv_usec >= 1000000) {
-				max_fsync.tv_sec++;
-				max_fsync.tv_usec -= 1000000;
-			}
-		}
-
-		/* Set the timeout */
-		next_fsync.tv_sec = cur_tv.tv_sec;
-		next_fsync.tv_usec = cur_tv.tv_usec + min_ack_delay_usecs;
 		if (next_fsync.tv_usec >= 1000000) {
 			next_fsync.tv_sec++;
 			next_fsync.tv_usec -= 1000000;
 		}
-		/* but not more than the max */
-		if ((next_fsync.tv_sec > max_fsync.tv_sec) ||
-		    ((next_fsync.tv_sec == max_fsync.tv_sec) &&
-		     (next_fsync.tv_usec > max_fsync.tv_usec))) {
-			next_fsync.tv_sec = max_fsync.tv_sec;
-			next_fsync.tv_usec = max_fsync.tv_usec;
-		}
 
 		add_timeout(&next_fsync, commit_leases_ackout, NULL,
 			    (tvref_t) NULL, (tvunref_t) NULL);
+	}
+}
+
+void
+commit_leases_readerdry(void *foo) 
+{
+	if (outstanding_acks) {
+		commit_leases();
+
+		/* Reset next_fsync and cancel any pending timeout. */
+		memset(&next_fsync, 0, sizeof(next_fsync));
+		cancel_timeout(commit_leases_ackout, NULL);
 	}
 }
 
@@ -2928,7 +2919,7 @@ commit_leases_ackout(void *foo)
 	if (outstanding_acks) {
 		commit_leases();
 
-		memset(&max_fsync, 0, sizeof(max_fsync));
+		memset(&next_fsync, 0, sizeof(next_fsync));
 	}
 }
 
@@ -3312,25 +3303,6 @@ int find_lease (struct lease **lp,
 		}
 	}
 
-	/* Finally, if we haven't found anything yet try again with the
-	 * host-identifier option ... */
-	if (!fixed_lease && !host) {
-		if (find_hosts_by_option(&hp, packet,
-					 packet->options, MDL) == 1) {
-			packet->known = 1;
-			if (host)
-				host_dereference(&host, MDL);
-			host_reference(&host, hp, MDL);
-			host_dereference(&hp, MDL);
-			mockup_lease (&fixed_lease, packet, share, host);
-#if defined (DEBUG_FIND_LEASE)
-			if (fixed_lease) {
-				log_info ("Found host via host-identifier");
-			}
-#endif
-		}
-	}
-
 	/* If fixed_lease is present but does not match the requested
 	   IP address, and this is a DHCPREQUEST, then we can't return
 	   any other lease, so we might as well return now. */
@@ -3349,8 +3321,7 @@ int find_lease (struct lease **lp,
 		goto out;
 	}
 
-	/*
-	 * If we found leases matching the client identifier, loop through
+	/* If we found leases matching the client identifier, loop through
 	 * the n_uid pointer looking for one that's actually valid.   We
 	 * can't do this until we get here because we depend on
 	 * packet -> known, which may be set by either the uid host
@@ -3366,20 +3337,14 @@ int find_lease (struct lease **lp,
 #endif
 
 #if defined (FAILOVER_PROTOCOL)
-		/*
-		 * When we lookup a lease by uid, we know the client identifier
-		 * matches the lease's record.  If it is active, or was last
-		 * active with the same client, we can trivially extend it.
-		 * If is not or was not active, we can allocate it to this
-		 * client if it matches the usual free/backup criteria (which
-		 * is contained in lease_mine_to_reallocate()).
-		 */
-		if (uid_lease->binding_state != FTS_ACTIVE &&
-		    uid_lease->rewind_binding_state != FTS_ACTIVE &&
-		    !lease_mine_to_reallocate(uid_lease)) {
+		/* When failover is active, it's possible that there could
+		   be two "free" leases for the same uid, but only one of
+		   them that's available for this failover peer to allocate. */
+		if (uid_lease -> binding_state != FTS_ACTIVE &&
+		    !lease_mine_to_reallocate (uid_lease)) {
 #if defined (DEBUG_FIND_LEASE)
-			log_info("not active or not mine to allocate: %s",
-				 piaddr(uid_lease->ip_addr));
+			log_info ("not mine to allocate: %s",
+				  piaddr (uid_lease -> ip_addr));
 #endif
 			goto n_uid;
 		}
@@ -3439,32 +3404,19 @@ int find_lease (struct lease **lp,
 			  piaddr (hw_lease -> ip_addr));
 #endif
 #if defined (FAILOVER_PROTOCOL)
-		/*
-		 * When we lookup a lease by chaddr, we know the MAC address
-		 * matches the lease record (we will check if the lease has a
-		 * client-id the client does not next).  If the lease is
-		 * currently active or was last active with this client, we can
-		 * trivially extend it.  Otherwise, there are a set of rules
-		 * that govern if we can reallocate this lease to any client
-		 * ("lease_mine_to_reallocate()") including this one.
-		 */
-		if (hw_lease->binding_state != FTS_ACTIVE &&
-		    hw_lease->rewind_binding_state != FTS_ACTIVE &&
-		    !lease_mine_to_reallocate(hw_lease)) {
+		/* When failover is active, it's possible that there could
+		   be two "free" leases for the same uid, but only one of
+		   them that's available for this failover peer to allocate. */
+		if (hw_lease -> binding_state != FTS_ACTIVE &&
+		    !lease_mine_to_reallocate (hw_lease)) {
 #if defined (DEBUG_FIND_LEASE)
-			log_info("not active or not mine to allocate: %s",
-				 piaddr(hw_lease->ip_addr));
+			log_info ("not mine to allocate: %s",
+				  piaddr (hw_lease -> ip_addr));
 #endif
 			goto n_hw;
 		}
 #endif
 
-		/*
-		 * This conditional skips "potentially active" leases (leases
-		 * we think are expired may be extended by the peer, etc) that
-		 * may be assigned to a differently /client-identified/ client
-		 * with the same MAC address.
-		 */
 		if (hw_lease -> binding_state != FTS_FREE &&
 		    hw_lease -> binding_state != FTS_BACKUP &&
 		    hw_lease -> uid &&
@@ -3477,6 +3429,7 @@ int find_lease (struct lease **lp,
 				  piaddr (hw_lease -> ip_addr));
 #endif
 			goto n_hw;
+			continue;
 		}
 		if (hw_lease -> subnet -> shared_network != share) {
 #if defined (DEBUG_FIND_LEASE)
@@ -3484,6 +3437,7 @@ int find_lease (struct lease **lp,
 				  piaddr (hw_lease -> ip_addr));
 #endif
 			goto n_hw;
+			continue;
 		}
 		if ((hw_lease -> pool -> prohibit_list &&
 		      permitted (packet, hw_lease -> pool -> prohibit_list)) ||
@@ -3549,15 +3503,8 @@ int find_lease (struct lease **lp,
 		lease_dereference (&ip_lease, MDL);
 	}
 
-	/*
-	 * If the requested address is in use (or potentially in use) by
-	 * a different client, it can't be granted.
-	 *
-	 * This first conditional only detects if the lease is currently
-	 * identified to a different client (client-id and/or chaddr
-	 * mismatch).  In this case we may not want to give the client the
-	 * lease, if doing so may potentially be an addressing conflict.
-	 */
+	/* Toss ip_lease if it hasn't yet expired and doesn't belong to the
+	   client. */
 	if (ip_lease &&
 	    (ip_lease -> uid ?
 	     (!have_client_identifier ||
@@ -3569,14 +3516,11 @@ int find_lease (struct lease **lp,
 	      memcmp (&ip_lease -> hardware_addr.hbuf [1],
 		      packet -> raw -> chaddr,
 		      (unsigned)(ip_lease -> hardware_addr.hlen - 1))))) {
-		/*
-		 * A lease is unavailable for allocation to a new client if
-		 * it is not in the FREE or BACKUP state.  There may be
-		 * leases that are in the expired state with a rewinding
-		 * state that is free or backup, but these will be processed
-		 * into the free or backup states by expiration processes, so
-		 * checking for them here is superfluous.
-		 */
+		/* If we're not doing failover, the only state in which
+		   we can allocate this lease to the client is FTS_FREE.
+		   If we are doing failover, things are more complicated.
+		   If the lease is free or backup, we let the caller decide
+		   whether or not to give it out. */
 		if (ip_lease -> binding_state != FTS_FREE &&
 		    ip_lease -> binding_state != FTS_BACKUP) {
 #if defined (DEBUG_FIND_LEASE)
@@ -3590,21 +3534,18 @@ int find_lease (struct lease **lp,
 		}
 	}
 
-	/*
-	 * If we got an ip_lease and a uid_lease or hw_lease, and ip_lease
-	 * is/was not active, and is not ours to reallocate, forget about it.
-	 */
+	/* If we got an ip_lease and a uid_lease or hw_lease, and ip_lease
+	   is not active, and is not ours to reallocate, forget about it. */
 	if (ip_lease && (uid_lease || hw_lease) &&
-	    ip_lease->binding_state != FTS_ACTIVE &&
-	    ip_lease->rewind_binding_state != FTS_ACTIVE &&
+	    ip_lease -> binding_state != FTS_ACTIVE &&
 #if defined(FAILOVER_PROTOCOL)
-	    !lease_mine_to_reallocate(ip_lease) &&
+	    !lease_mine_to_reallocate (ip_lease) &&
 #endif
-	    packet->packet_type == DHCPDISCOVER) {
+	    packet -> packet_type == DHCPDISCOVER) {
 #if defined (DEBUG_FIND_LEASE)
-		log_info("ip lease not active or not ours to offer.");
+		log_info ("ip lease not ours to offer.");
 #endif
-		lease_dereference(&ip_lease, MDL);
+		lease_dereference (&ip_lease, MDL);
 	}
 
 	/* If for some reason the client has more than one lease
@@ -4040,7 +3981,6 @@ int allocate_lease (struct lease **lp, struct packet *packet,
 				}
 			}
 
-			/* Try abandoned leases as a last resort. */
 			if ((candl == NULL) &&
 			    (pool->abandoned != NULL) &&
 			    lease_mine_to_reallocate(pool->abandoned))
@@ -4071,18 +4011,6 @@ int allocate_lease (struct lease **lp, struct packet *packet,
 			continue;
 		}
 
-		/*
-		 * There are tiers of lease state preference, listed here in
-		 * reverse order (least to most preferential):
-		 *
-		 *    ABANDONED
-		 *    FREE/BACKUP
-		 *
-		 * If the selected lease and candidate are both of the same
-		 * state, select the oldest (longest ago) expiration time
-		 * between the two.  If the candidate lease is of a higher
-		 * preferred grade over the selected lease, use it.
-		 */
 		if ((lease -> binding_state == FTS_ABANDONED) &&
 		    ((candl -> binding_state != FTS_ABANDONED) ||
 		     (candl -> ends < lease -> ends))) {
@@ -4358,33 +4286,3 @@ lowest_site_code(const void *key, unsigned len, void *object)
 	return ISC_R_SUCCESS;
 }
 
-static void
-maybe_return_agent_options(struct packet *packet, struct option_state *options)
-{
-	/* If there were agent options in the incoming packet, return
-	 * them.  Do not return the agent options if they were stashed
-	 * on the lease.  We do not check giaddr to detect the presence of
-	 * a relay, as this excludes "l2" relay agents which have no giaddr
-	 * to set.
-	 *
-	 * XXX: If the user configures options for the relay agent information
-	 * (state->options->universes[agent_universe.index] is not NULL),
-	 * we're still required to duplicate other values provided by the
-	 * relay agent.  So we need to merge the old values not configured
-	 * by the user into the new state, not just give up.
-	 */
-	if (!packet->agent_options_stashed &&
-	    packet->options->universe_count > agent_universe.index &&
-	    packet->options->universes[agent_universe.index] != NULL &&
-	    (options->universe_count <= agent_universe.index ||
-	     options->universes[agent_universe.index] == NULL)) {
-		option_chain_head_reference
-		    ((struct option_chain_head **)
-		     &(options->universes[agent_universe.index]),
-		     (struct option_chain_head *)
-		     packet->options->universes[agent_universe.index], MDL);
-
-		if (options->universe_count <= agent_universe.index)
-			options->universe_count = agent_universe.index + 1;
-	}
-}

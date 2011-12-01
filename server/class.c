@@ -84,7 +84,6 @@ int check_collection (packet, lease, collection)
 	int matched = 0;
 	int status;
 	int ignorep;
-	int classfound;
 
 	for (class = collection -> classes; class; class = class -> nic) {
 #if defined (DEBUG_CLASS_MATCHING)
@@ -130,15 +129,9 @@ int check_collection (packet, lease, collection)
 				   class -> submatch, MDL));
 			if (status && data.len) {
 				nc = (struct class *)0;
-				classfound = class_hash_lookup (&nc, class -> hash,
-					(const char *)data.data, data.len, MDL);
-
-#ifdef LDAP_CONFIGURATION
-				if (!classfound && find_subclass_in_ldap (class, &nc, &data))
-					classfound = 1;
-#endif
-
-				if (classfound) {
+				if (class_hash_lookup (&nc, class -> hash,
+						       (const char *)data.data,
+						       data.len, MDL)) {
 #if defined (DEBUG_CLASS_MATCHING)
 					log_info ("matches subclass %s.",
 					      print_hex_1 (data.len,

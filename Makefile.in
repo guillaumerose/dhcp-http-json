@@ -102,7 +102,6 @@ INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
-LDAP_CFLAGS = @LDAP_CFLAGS@
 LDFLAGS = @LDFLAGS@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
@@ -115,7 +114,6 @@ PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
 PACKAGE_NAME = @PACKAGE_NAME@
 PACKAGE_STRING = @PACKAGE_STRING@
 PACKAGE_TARNAME = @PACKAGE_TARNAME@
-PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 RANLIB = @RANLIB@
@@ -175,18 +173,15 @@ EXTRA_DIST = RELNOTES LICENSE \
 	     contrib/3.0b1-lease-convert contrib/dhclient-tz-exithook.sh \
 	     contrib/dhcp.spec contrib/sethostname.sh contrib/solaris.init \
 	     contrib/ms2isc/Registry.pm contrib/ms2isc/ms2isc.pl \
-	     contrib/ms2isc/readme.txt contrib/ldap/dhcpd-conf-to-ldap \
-	     contrib/ldap/dhcp.schema contrib/ldap/README.ldap \
+	     contrib/ms2isc/readme.txt \
 	     doc/IANA-arp-parameters doc/Makefile doc/References.html \
 	     doc/References.txt doc/References.xml doc/api+protocol \
 	     doc/ja_JP.eucJP/dhclient-script.8 doc/ja_JP.eucJP/dhclient.8 \
 	     doc/ja_JP.eucJP/dhclient.conf.5 doc/ja_JP.eucJP/dhclient.leases.5 \
 	     doc/ja_JP.eucJP/dhcp-eval.5 doc/ja_JP.eucJP/dhcp-options.5 \
-	     doc/examples/dhclient-dhcpv6.conf doc/examples/dhcpd-dhcpv6.conf \
-	     util/bindvar.sh \
-	     bind/Makefile bind/bind.tar.gz bind/version.tmp 
+	     doc/examples/dhclient-dhcpv6.conf doc/examples/dhcpd-dhcpv6.conf
 
-SUBDIRS = bind includes tests common dst omapip client dhcpctl relay server
+SUBDIRS = includes tests common minires dst omapip client dhcpctl relay server
 nobase_include_HEADERS = dhcpctl/dhcpctl.h
 all: all-recursive
 

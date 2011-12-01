@@ -303,25 +303,21 @@ do_id_hash(const void *name, unsigned len, unsigned size)
 	if (len == 0)
 		return 0;
 
-	/*
-	 * The switch handles our starting conditions, then we hash the
-	 * remaining bytes in groups of 3
+	/* The switch indexes our starting position into the do/while loop,
+	 * taking up the remainder after hashing in all the other bytes in
+	 * threes.
 	 */
-	   
 	switch (len % 3) {
-	case 0:
-		break;
-	case 2:
-		accum ^= *s++ << 8;
-	case 1:
-		accum ^= *s++;
-		break;
-	}
+		do {
+	      case 0:
+			accum ^= *s++ << 16;
+	      case 2:
+			accum ^= *s++ << 8;
+	      case 1:
+			accum ^= *s++;
+		} while (s < end);
 
-	while (s < end) {
-		accum ^= *s++ << 16;
-		accum ^= *s++ << 8;
-		accum ^= *s++;
+		break;
 	}
 
 	return accum % size;

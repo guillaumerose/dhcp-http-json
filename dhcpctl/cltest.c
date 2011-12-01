@@ -34,7 +34,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
-#include "omapip/result.h"
+#include <isc-dhcp/result.h>
 #include "dhcpctl.h"
 
 int main (int, char **);

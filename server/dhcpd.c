@@ -72,6 +72,7 @@ char std_nsupdate [] = "						    \n\
 option server.ddns-hostname =						    \n\
   pick (option fqdn.hostname, option host-name);			    \n\
 option server.ddns-domainname =	config-option domain-name;		    \n\
+option server.ddns-ttl = encode-int(lease-time / 2, 32);		    \n\
 option server.ddns-rev-domainname = \"in-addr.arpa.\";";
 
 /* This is the old-style name service updater that is executed
@@ -154,8 +155,8 @@ on commit {								    \n\
   }									    \n\
 }";
 
-#endif /* NSUPDATE */
 int ddns_update_style;
+#endif /* NSUPDATE */
 
 const char *path_dhcpd_conf = _PATH_DHCPD_CONF;
 const char *path_dhcpd_db = _PATH_DHCPD_DB;
@@ -176,7 +177,7 @@ static isc_result_t verify_addr (omapi_object_t *l, omapi_addr_t *addr) {
 
 static isc_result_t verify_auth (omapi_object_t *p, omapi_auth_key_t *a) {
 	if (a != omapi_key)
-		return DHCP_R_INVALIDKEY;
+		return ISC_R_INVALIDKEY;
 	return ISC_R_SUCCESS;
 }
 
@@ -241,10 +242,8 @@ main(int argc, char **argv) {
 	isc_result_t result;
 	unsigned seed;
 	struct interface_info *ip;
-#if defined (NSUPDATE)
 	struct parse *parse;
 	int lose;
-#endif
 	int no_dhcpd_conf = 0;
 	int no_dhcpd_db = 0;
 	int no_dhcpd_pid = 0;
@@ -277,12 +276,6 @@ main(int argc, char **argv) {
                 log_perror = 0; /* No sense logging to /dev/null. */
         else if (fd != -1)
                 close(fd);
-
-	/* Set up the isc and dns library managers */
-	status = dhcp_context_create();
-	if (status != ISC_R_SUCCESS)
-		log_fatal("Can't initialize context: %s",
-			  isc_result_totext(status));
 
 	/* Set up the client classification system. */
 	classification_setup ();
@@ -487,7 +480,6 @@ main(int argc, char **argv) {
 	trace_srandom = trace_type_register ("random-seed", (void *)0,
 					     trace_seed_input,
 					     trace_seed_stop, MDL);
-	trace_ddns_init();
 #endif
 
 #if defined (PARANOIA)
@@ -599,14 +591,6 @@ main(int argc, char **argv) {
 	/* Add the ddns update style enumeration prior to parsing. */
 	add_enumeration (&ddns_styles);
 	add_enumeration (&syslog_enum);
-#if defined (LDAP_CONFIGURATION)
-	add_enumeration (&ldap_methods);
-#if defined (LDAP_USE_SSL)
-	add_enumeration (&ldap_ssl_usage_enum);
-	add_enumeration (&ldap_tls_reqcert_enum);
-	add_enumeration (&ldap_tls_crlcheck_enum);
-#endif
-#endif
 
 	if (!group_allocate (&root_group, MDL))
 		log_fatal ("Can't allocate root group!");
@@ -843,6 +827,8 @@ main(int argc, char **argv) {
 	omapi_set_int_value ((omapi_object_t *)dhcp_control_object,
 			     (omapi_object_t *)0, "state", server_running);
 
+	register_eventhandler(&rw_queue_empty,commit_leases_readerdry);
+	
 	/* Receive packets and dispatch them... */
 	dispatch ();
 
@@ -858,9 +844,7 @@ void postconf_initialization (int quiet)
 	struct option_cache *oc;
 	char *s;
 	isc_result_t result;
-#if defined (NSUPDATE)
 	struct parse *parse;
-#endif
 	int tmp;
 
 	/* Now try to get the lease file name. */
@@ -1049,17 +1033,6 @@ void postconf_initialization (int quiet)
 	} else {
 		ddns_update_style = DDNS_UPDATE_STYLE_NONE;
 	}
-#if defined (NSUPDATE)
-	/* We no longer support ad_hoc, tell the user */
-	if (ddns_update_style == DDNS_UPDATE_STYLE_AD_HOC) {
-		log_fatal("ddns-update-style ad_hoc no longer supported");
-	}
-#else
-	/* If we don't have support for updates compiled in tell the user */
-	if (ddns_update_style != DDNS_UPDATE_STYLE_NONE) {
-		log_fatal("Support for ddns-update-style not compiled in");
-	}
-#endif
 
 	oc = lookup_option (&server_universe, options, SV_LOG_FACILITY);
 	if (oc) {
@@ -1483,5 +1456,5 @@ isc_result_t dhcp_set_control_state (control_object_state_t oldstate,
 		dhcp_io_shutdown_countdown (0);
 		return ISC_R_SUCCESS;
 	}
-	return DHCP_R_INVALIDARG;
+	return ISC_R_INVALIDARG;
 }

@@ -3,7 +3,7 @@
 
 /*
  * Portions Copyright (c) 1995-1998 by Trusted Information Systems, Inc.
- * Portions Copyright (c) 2007,2009 by Internet Systems Consortium, Inc. ("ISC")
+ * Portions Copyright (c) 2007 by Internet Systems Consortium, Inc. ("ISC")
  *
  * Permission to use, copy modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -155,16 +155,6 @@ void      dst_s_put_int32( u_int8_t *buf, const u_int32_t val);
 # define DUMP(a,b,c,d) dst_s_dump(a,b,c,d)
 #else
 # define DUMP(a,b,c,d)
-#endif
-
-#if defined (MINIRES_LIB)
-#define b64_pton MRb64_pton
-#define b64_ntop MRb64_ntop
-
-int b64_pton (char const *, unsigned char *, size_t);
-int b64_ntop (unsigned char const *, size_t, char *, size_t);
-
-#define USE_MD5
 #endif
 
 

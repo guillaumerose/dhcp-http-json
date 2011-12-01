@@ -4,7 +4,8 @@
    way... */
 
 /*
- * Copyright (c) 2004,2005,2007-2009 by Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (c) 2004,2005,2007-2009 by
+ *				Internet Systems Consortium, Inc. ("ISC")
  * Copyright (c) 1995-2003 by Internet Software Consortium
  *
  * Permission to use, copy, modify, and distribute this software for any
@@ -376,13 +377,13 @@ range2cidr(struct iaddrcidrnetlist **result,
 	int tmp;
 
 	if (result == NULL) {
-		return DHCP_R_INVALIDARG;
+		return ISC_R_INVALIDARG;
 	}
 	if (*result != NULL) {
-		return DHCP_R_INVALIDARG;
+		return ISC_R_INVALIDARG;
 	}
 	if ((lo == NULL) || (hi == NULL) || (lo->len != hi->len)) {
-		return DHCP_R_INVALIDARG;
+		return ISC_R_INVALIDARG;
 	}
 
 	/*
@@ -511,10 +512,10 @@ free_iaddrcidrnetlist(struct iaddrcidrnetlist **result) {
 	struct iaddrcidrnetlist *p;
 
 	if (result == NULL) {
-		return DHCP_R_INVALIDARG;
+		return ISC_R_INVALIDARG;
 	}
 	if (*result == NULL) {
-		return DHCP_R_INVALIDARG;
+		return ISC_R_INVALIDARG;
 	}
 
 	while (*result != NULL) {

@@ -1,4 +1,4 @@
-AC_INIT([DHCP], [4.2.0-P2], [dhcp-users@isc.org])
+AC_INIT([DHCP], [4.1.1-P1], [dhcp-users@isc.org])
 
 # we specify "foreign" to avoid having to have the GNU mandated files,
 # like AUTHORS, COPYING, and such
@@ -483,60 +483,9 @@ AC_CHECK_MEMBER(struct msghdr.msg_control,,
 #include <sys/socket.h>
 	])
 
-libbind=
-AC_ARG_WITH(libbind,
-	AC_HELP_STRING([--with-libbind=PATH],
-		       [bind includes and libraries are in PATH 
-		        (default is ./bind)]),
-	use_libbind="$withval", use_libbind="no")
-case "$use_libbind" in 
-yes)
-	libbind="\${top_srcdir}/bind"
-	;;
-no)
-	libbind="\${top_srcdir}/bind"
-	;;
-*)
-	libbind="$use_libbind"
-	;;
-esac
-
-# OpenLDAP support.
-AC_ARG_WITH(ldap,
-    AC_HELP_STRING([--with-ldap],
-                   [enable OpenLDAP support in dhcpd (default is no)]),
-    [ldap=$withval],
-    [ldap=no])
-
-# OpenLDAP with SSL support.
-AC_ARG_WITH(ldapcrypto,
-    AC_HELP_STRING([--with-ldapcrypto],
-                   [enable OpenLDAP crypto support in dhcpd (default is no)]),
-    [ldapcrypto=$withval],
-    [ldapcrypto=no])
-
-# OpenLDAP support is disabled by default, if enabled then SSL support is an
-# extra optional that is also disabled by default.  Enabling LDAP SSL support
-# implies enabling LDAP support.
-if test x$ldap = xyes || test x$ldapcrypto = xyes ; then
-    AC_SEARCH_LIBS(ldap_initialize, [ldap], ,
-		   AC_MSG_FAILURE([*** Cannot find ldap_initialize with -lldap - do you need to install an OpenLDAP2 Devel package?]))
-
-    if test x$ldapcrypto = xyes ; then
-	AC_SUBST(LDAP_CFLAGS, ["-DLDAP_CONFIGURATION -DLDAP_USE_SSL"])
-    else
-	AC_SUBST(LDAP_CFLAGS, ["-DLDAP_CONFIGURATION"])
-    fi
-fi
-
 # Append selected warning levels to CFLAGS before substitution (but after
 # AC_TRY_COMPILE & etc).
 CFLAGS="$CFLAGS $STD_CWARNINGS"
-
-# Try to add the bind include directory
-CFLAGS="$CFLAGS -I$libbind/include"
-
-AC_C_FLEXIBLE_ARRAY_MEMBER
 
 AC_OUTPUT([
   Makefile
@@ -546,10 +495,10 @@ AC_OUTPUT([
   dhcpctl/Makefile
   dst/Makefile
   includes/Makefile
+  minires/Makefile
   omapip/Makefile
   relay/Makefile
   server/Makefile
   tests/Makefile
 ])
 
-sh util/bindvar.sh
