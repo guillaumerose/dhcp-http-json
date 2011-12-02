@@ -3,7 +3,7 @@
    Definitions for dhcpd... */
 
 /*
- * Copyright (c) 2004-2010 by Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (c) 2004-2009 by Internet Systems Consortium, Inc. ("ISC")
  * Copyright (c) 1996-2003 by Internet Software Consortium
  *
  * Permission to use, copy, modify, and distribute this software for any
@@ -47,7 +47,6 @@
 #define fd_set cygwin_fd_set
 #include <sys/types.h>
 #endif
-#include <stddef.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -72,8 +71,9 @@
 #include "osdep.h"
 
 #include "arpa/nameser.h"
-
-#include "minires.h"
+#if defined (NSUPDATE)
+# include "minires/minires.h"
+#endif
 
 struct hash_table;
 typedef struct hash_table group_hash_t;
@@ -92,22 +92,16 @@ typedef time_t TIME;
 #define EOL '\n'
 #endif
 
-#include <omapip/isclib.h>
-#include <omapip/result.h>
-
 #include "dhcp.h"
 #include "dhcp6.h"
 #include "statement.h"
 #include "tree.h"
 #include "inet.h"
 #include "dhctoken.h"
+#include "heap.h"
 
+#include <isc-dhcp/result.h>
 #include <omapip/omapip_p.h>
-
-#if defined(LDAP_CONFIGURATION)
-# include <ldap.h>
-# include <sys/utsname.h> /* for uname() */
-#endif
 
 #if !defined (BYTE_NAME_HASH_SIZE)
 # define BYTE_NAME_HASH_SIZE	401	/* Default would be ridiculous. */
@@ -298,16 +292,6 @@ struct parse {
 	size_t bufsiz;
 
 	struct parse *saved_state;
-
-#if defined(LDAP_CONFIGURATION)
-	/*
-	 * LDAP configuration uses a call-back to iteratively read config
-	 * off of the LDAP repository.
-	 * XXX: The token stream can not be rewound reliably, so this must
-	 * be addressed for DHCPv6 support.
-	 */
-	int (*read_function)(struct parse *);
-#endif
 };
 
 /* Variable-length array of data. */
@@ -439,32 +423,6 @@ struct hardware {
 	u_int8_t hbuf [17];
 };
 
-#if defined(LDAP_CONFIGURATION)
-# define LDAP_BUFFER_SIZE		8192
-# define LDAP_METHOD_STATIC		0
-# define LDAP_METHOD_DYNAMIC	1
-#if defined (LDAP_USE_SSL)
-# define LDAP_SSL_OFF			0
-# define LDAP_SSL_ON			1
-# define LDAP_SSL_TLS			2
-# define LDAP_SSL_LDAPS			3
-#endif
-
-/* This is a tree of the current configuration we are building from LDAP */
-struct ldap_config_stack {
-	LDAPMessage * res;	/* Pointer returned from ldap_search */
-	LDAPMessage * ldent;	/* Current item in LDAP that we're processing.
-							in res */
-	int close_brace;	/* Put a closing } after we're through with
-						this item */
-	int processed;	/* We set this flag if this base item has been
-					processed. After this base item is processed,
-					we can start processing the children */
-	struct ldap_config_stack *children;
-	struct ldap_config_stack *next;
-};
-#endif
-
 typedef enum {
 	server_startup = 0,
 	server_running = 1,
@@ -536,28 +494,13 @@ struct lease {
 					 RESERVED_LEASE | \
 					 BOOTP_LEASE)
 
-	/*
-	 * The lease's binding state is its current state.  The next binding
-	 * state is the next state this lease will move into by expiration,
-	 * or timers in general.  The desired binding state is used on lease
-	 * updates; the caller is attempting to move the lease to the desired
-	 * binding state (and this may either succeed or fail, so the binding
-	 * state must be preserved).
-	 *
-	 * The 'rewind' binding state is used in failover processing.  It
-	 * is used for an optimization when out of communications; it allows
-	 * the server to "rewind" a lease to the previous state acknowledged
-	 * by the peer, and progress forward from that point.
-	 */
 	binding_state_t binding_state;
 	binding_state_t next_binding_state;
 	binding_state_t desired_binding_state;
-	binding_state_t rewind_binding_state;
-
+	
 	struct lease_state *state;
 
-	/*
-	 * 'tsfp' is more of an 'effective' tsfp.  It may be calculated from
+	/* 'tsfp' is more of an 'effective' tsfp.  It may be calculated from
 	 * stos+mclt for example if it's an expired lease and the server is
 	 * in partner-down state.  'atsfp' is zeroed whenever a lease is
 	 * updated - and only set when the peer acknowledges it.  This
@@ -569,14 +512,6 @@ struct lease {
 	TIME cltt;	/* Client last transaction time. */
 	u_int32_t last_xid; /* XID we sent in this lease's BNDUPD */
 	struct lease *next_pending;
-
-	/*
-	 * A pointer to the state of the ddns update for this lease.
-	 * It should be set while the update is in progress and cleared
-	 * when the update finishes.  It can be used to cancel the
-	 * update if we want to do a different update.
-	 */
-	struct dhcp_ddns_cb *ddns_cb;
 };
 
 struct lease_state {
@@ -708,33 +643,6 @@ struct lease_state {
 # define DEFAULT_ACK_DELAY_USECS 250000 /* 1/4 of a second */
 #endif
 
-#if !defined (DEFAULT_MIN_ACK_DELAY_USECS)
-# define DEFAULT_MIN_ACK_DELAY_USECS 10000 /* 1/100 second */
-#endif
-
-#if defined(LDAP_CONFIGURATION)
-# define SV_LDAP_SERVER			60
-# define SV_LDAP_PORT			61
-# define SV_LDAP_USERNAME		62
-# define SV_LDAP_PASSWORD		63
-# define SV_LDAP_BASE_DN		64
-# define SV_LDAP_METHOD			65
-# define SV_LDAP_DEBUG_FILE		66
-# define SV_LDAP_DHCP_SERVER_CN		67
-# define SV_LDAP_REFERRALS		68
-#if defined (LDAP_USE_SSL)
-# define SV_LDAP_SSL			69
-# define SV_LDAP_TLS_REQCERT		70
-# define SV_LDAP_TLS_CA_FILE		71
-# define SV_LDAP_TLS_CA_DIR		72
-# define SV_LDAP_TLS_CERT		73
-# define SV_LDAP_TLS_KEY		74
-# define SV_LDAP_TLS_CRLCHECK		75
-# define SV_LDAP_TLS_CIPHERS		76
-# define SV_LDAP_TLS_RANDFILE		77
-#endif
-#endif
-
 #if !defined (DEFAULT_DEFAULT_LEASE_TIME)
 # define DEFAULT_DEFAULT_LEASE_TIME 43200
 #endif
@@ -749,9 +657,6 @@ struct lease_state {
 
 #if !defined (DEFAULT_DDNS_TTL)
 # define DEFAULT_DDNS_TTL 3600
-#endif
-#if !defined (MAX_DEFAULT_DDNS_TTL)
-# define MAX_DEFAULT_DDNS_TTL 3600
 #endif
 
 /* Client option names */
@@ -1182,14 +1087,6 @@ struct client_state {
 	 * a no-op).
 	 */
 	void (*v6_handler)(struct packet *, struct client_state *);
-
-	/*
-	 * A pointer to the state of the ddns update for this lease.
-	 * It should be set while the update is in progress and cleared
-	 * when the update finishes.  It can be used to cancel the
-	 * update if we want to do a different update.
-	 */
-	struct dhcp_ddns_cb *ddns_cb;
 };
 
 struct envadd_state {
@@ -1260,7 +1157,6 @@ struct interface_info {
 	int dlpi_sap_length;
 	struct hardware dlpi_broadcast_addr;
 # endif /* DLPI_SEND || DLPI_RECEIVE */
-	struct hardware anycast_mac_addr;
 };
 
 struct hardware_link {
@@ -1284,7 +1180,6 @@ struct timeout {
 	void *what;
 	tvref_t ref;
 	tvunref_t unref;
-	isc_timer_t *isc_timeout;  
 };
 
 struct eventqueue {
@@ -1476,15 +1371,6 @@ struct iasubopt {
 
 	int heap_index;				/* index into heap, or -1 
 						   (internal use only) */
-
-	/*
-	 * A pointer to the state of the ddns update for this lease.
-	 * It should be set while the update is in progress and cleared
-	 * when the update finishes.  It can be used to cancel the
-	 * update if we want to do a different update.
-	 */
-	struct dhcp_ddns_cb *ddns_cb;
-
 };
 
 struct ia_xx {
@@ -1517,70 +1403,6 @@ struct ipv6_pool {
 						   this pool */
 	struct subnet *subnet;			/* subnet for this pool */
 };
-
-/* Flags and state for dhcp_ddns_cb_t */
-#define DDNS_UPDATE_ADDR        0x01
-#define DDNS_UPDATE_PTR         0x02
-#define DDNS_INCLUDE_RRSET      0x04
-#define DDNS_CONFLICT_OVERRIDE  0x08
-#define DDNS_CLIENT_DID_UPDATE  0x10
-#define DDNS_EXECUTE_NEXT       0x20
-#define DDNS_ABORT              0x40
-
-/*
- * The following two groups are separate and we could reuse
- * values but not reusing them may be useful in the future.
- */
-#define DDNS_STATE_CLEANUP          0 // The previous step failed, cleanup
-
-#define DDNS_STATE_ADD_FW_NXDOMAIN  1
-#define DDNS_STATE_ADD_FW_YXDHCID   2
-#define DDNS_STATE_ADD_PTR          3
-
-#define DDNS_STATE_REM_FW_YXDHCID  17
-#define DDNS_STATE_REM_FW_NXRR     18
-#define DDNS_STATE_REM_PTR         19
-
-/*
- * Flags for the dns print function
- */
-#define DDNS_PRINT_INBOUND  1
-#define DDNS_PRINT_OUTBOUND 0
-
-struct dhcp_ddns_cb;
-
-typedef void (*ddns_action_t)(struct dhcp_ddns_cb *ddns_cb,
-			      isc_result_t result);
-
-typedef struct dhcp_ddns_cb {
-	struct data_string fwd_name;
-	struct data_string rev_name;
-	struct data_string dhcid;
-	struct iaddr address;
-	int address_type;
-
-	unsigned long ttl;
-
-	unsigned char zone_name[DHCP_MAXDNS_WIRE];
-	isc_sockaddrlist_t zone_server_list;
-	isc_sockaddr_t zone_addrs[DHCP_MAXNS];
-	int zone_addr_count;
-	struct dns_zone *zone;
-
-	int flags;
-	TIME timeout;
-	int state;
-	ddns_action_t cur_func;
-
-	struct dhcp_ddns_cb * next_op;
-
-	/* Lease or client state that triggered the ddns operation */
-	void *lease;
-	struct binding_scope **scope;
- 
-	void *transaction;
-	void *dataspace;
-} dhcp_ddns_cb_t;
 
 extern struct ipv6_pool **pools;
 extern int num_pools;
@@ -1920,10 +1742,7 @@ void parse_server_duid_conf(struct parse *cfile);
 /* ddns.c */
 int ddns_updates(struct packet *, struct lease *, struct lease *,
 		 struct iasubopt *, struct iasubopt *, struct option_state *);
-int ddns_removals(struct lease *, struct iasubopt *, struct dhcp_ddns_cb *);
-#if defined (TRACING)
-void trace_ddns_init(void);
-#endif
+int ddns_removals(struct lease *, struct iasubopt *);
 
 /* parse.c */
 void add_enumeration (struct enumeration *);
@@ -2029,7 +1848,7 @@ int evaluate_expression (struct binding_value **, struct packet *,
 			 struct binding_scope **, struct expression *,
 			 const char *, int);
 int binding_value_dereference (struct binding_value **, const char *, int);
-#if defined (NSUPDATE_OLD)
+#if defined (NSUPDATE)
 int evaluate_dns_expression PROTO ((ns_updrec **, struct packet *,
 				    struct lease *, 
 				    struct client_state *,
@@ -2293,7 +2112,7 @@ extern int db_time_format;
 char *quotify_string (const char *, const char *, int);
 char *quotify_buf (const unsigned char *, unsigned, const char *, int);
 char *print_base64 (const unsigned char *, unsigned, const char *, int);
-char *print_hw_addr PROTO ((const int, const int, const unsigned char *));
+char *print_hw_addr PROTO ((int, int, unsigned char *));
 void print_lease PROTO ((struct lease *));
 void dump_raw PROTO ((const unsigned char *, unsigned));
 void dump_packet_option (struct option_cache *, struct packet *,
@@ -2317,7 +2136,7 @@ int token_print_indent (FILE *, int, int,
 			const char *, const char *, const char *);
 void indent_spaces (FILE *, int);
 #if defined (NSUPDATE)
-void print_dns_status (int, struct dhcp_ddns_cb *, isc_result_t);
+void print_dns_status (int, ns_updque *);
 #endif
 const char *print_time(TIME);
 
@@ -2651,7 +2470,6 @@ extern const char *path_dhclient_pid;
 extern char *path_dhclient_script;
 extern int interfaces_requested;
 extern struct data_string default_duid;
-extern int duid_type;
 
 extern struct client_config top_level_config;
 
@@ -2720,9 +2538,8 @@ isc_result_t dhclient_interface_startup_hook (struct interface_info *);
 void dhclient_schedule_updates(struct client_state *client,
 			       struct iaddr *addr, int offset);
 void client_dns_update_timeout (void *cp);
-isc_result_t client_dns_update(struct client_state *client,
-			       dhcp_ddns_cb_t *ddns_cb);
-void client_dns_remove(struct client_state *client, struct iaddr *addr);
+isc_result_t client_dns_update(struct client_state *client, int, int,
+			       struct iaddr *);
 
 void dhcpv4_client_assignments(void);
 void dhcpv6_client_assignments(void);
@@ -2866,15 +2683,13 @@ isc_result_t enter_dns_zone (struct dns_zone *);
 isc_result_t dns_zone_lookup (struct dns_zone **, const char *);
 int dns_zone_dereference PROTO ((struct dns_zone **, const char *, int));
 #if defined (NSUPDATE)
-#define FIND_FORWARD 0
-#define FIND_REVERSE 1
-isc_result_t find_cached_zone (dhcp_ddns_cb_t *, int);
+isc_result_t find_cached_zone (const char *, ns_class, char *,
+			       size_t, struct in_addr *, int, int *,
+			       struct dns_zone **);
 void forget_zone (struct dns_zone **);
 void repudiate_zone (struct dns_zone **);
-//void cache_found_zone (ns_class, char *, struct in_addr *, int);
+void cache_found_zone (ns_class, char *, struct in_addr *, int);
 int get_dhcid (struct data_string *, int, const u_int8_t *, unsigned);
-void dhcid_tolease (struct data_string *, struct data_string *);
-isc_result_t dhcid_fromlease (struct data_string *, struct data_string *);
 isc_result_t ddns_update_fwd(struct data_string *, struct iaddr,
 			     struct data_string *, unsigned long, unsigned,
 			     unsigned);
@@ -3333,7 +3148,6 @@ void dhcp_failover_reconnect (void *);
 void dhcp_failover_startup_timeout (void *);
 void dhcp_failover_link_startup_timeout (void *);
 void dhcp_failover_listener_restart (void *);
-void dhcp_failover_auto_partner_down(void *vs);
 isc_result_t dhcp_failover_state_get_value PROTO ((omapi_object_t *,
 						   omapi_object_t *,
 						   omapi_data_string_t *,
@@ -3420,25 +3234,11 @@ OMAPI_OBJECT_ALLOC_DECL (dhcp_failover_link, dhcp_failover_link_t,
 
 const char *binding_state_print (enum failover_state);
 
-/* ldap.c */
-#if defined(LDAP_CONFIGURATION)
-extern struct enumeration ldap_methods;
-#if defined (LDAP_USE_SSL)
-extern struct enumeration ldap_ssl_usage_enum;
-extern struct enumeration ldap_tls_reqcert_enum;
-extern struct enumeration ldap_tls_crlcheck_enum;
-#endif
-isc_result_t ldap_read_config (void);
-int find_haddr_in_ldap (struct host_decl **, int, unsigned,
-                        const unsigned char *, const char *, int);
-int find_subclass_in_ldap (struct class *, struct class **,
-                           struct data_string *);
-#endif
 
 /* mdb6.c */
-HASH_FUNCTIONS_DECL(ia, unsigned char *, struct ia_xx, ia_hash_t)
+HASH_FUNCTIONS_DECL(ia, unsigned char *, struct ia_xx, ia_hash_t);
 HASH_FUNCTIONS_DECL(iasubopt, struct in6_addr *, struct iasubopt,
-		    iasubopt_hash_t)
+		    iasubopt_hash_t);
 
 isc_result_t iasubopt_allocate(struct iasubopt **iasubopt,
 			       const char *file, int line);
@@ -3515,17 +3315,3 @@ void mark_hosts_unavailable(void);
 void mark_phosts_unavailable(void);
 void mark_interfaces_unavailable(void);
 
-dhcp_ddns_cb_t *ddns_cb_alloc(const char *file, int line);
-void ddns_cb_free (dhcp_ddns_cb_t *ddns_cb, const char *file, int line);
-void ddns_cb_forget_zone (dhcp_ddns_cb_t *ddns_cb);
-
-//void *key_from_zone(struct dns_zone *zone);
-
-isc_result_t
-ddns_modify_fwd(dhcp_ddns_cb_t *ddns_cb);
-
-isc_result_t
-ddns_modify_ptr(dhcp_ddns_cb_t *ddns_cb);
-
-void
-ddns_cancel(dhcp_ddns_cb_t *ddns_cb);

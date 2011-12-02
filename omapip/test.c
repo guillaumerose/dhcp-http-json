@@ -3,8 +3,7 @@
    Test code for omapip... */
 
 /*
- * Copyright (c) 2009-2010 by Internet Systems Consortium, Inc. ("ISC")
- * Copyright (c) 2004 by Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (c) 2004,2009 by Internet Systems Consortium, Inc. ("ISC")
  * Copyright (c) 1999-2003 by Internet Software Consortium
  *
  * Permission to use, copy, modify, and distribute this software for any
@@ -33,30 +32,20 @@
  * ``http://www.nominum.com''.
  */
 
-#include "config.h"
-
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
-#include <omapip/result.h>
+#include <isc-dhcp/result.h>
 #include <sys/time.h>
 #include <omapip/omapip.h>
-#include <omapip/isclib.h>
 
 int main (int argc, char **argv)
 {
 	omapi_object_t *listener = (omapi_object_t*)0;
 	omapi_object_t *connection = (omapi_object_t*)0;
 	isc_result_t status;
-
-	status = dhcp_context_create();
-	if (status != ISC_R_SUCCESS) {
-		fprintf(stderr, "Can't initialize context: %s\n",
-			isc_result_totext(status));
-		exit(1);
-	}
 
 	omapi_init ();
 

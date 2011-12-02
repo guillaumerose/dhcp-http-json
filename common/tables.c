@@ -843,14 +843,14 @@ option_reference(struct option **dest, struct option *src,
 	         const char * file, int line)
 {
 	if (!dest || !src)
-	        return DHCP_R_INVALIDARG;
+	        return ISC_R_INVALIDARG;
 
 	if (*dest) {
 #if defined(POINTER_DEBUG)
 	        log_fatal("%s(%d): reference store into non-null pointer!",
 	                  file, line);
 #else
-	        return DHCP_R_INVALIDARG;
+	        return ISC_R_INVALIDARG;
 #endif
 	}
 
@@ -864,13 +864,13 @@ int
 option_dereference(struct option **dest, const char *file, int line)
 {
 	if (!dest)
-	        return DHCP_R_INVALIDARG;
+	        return ISC_R_INVALIDARG;
 
 	if (!*dest) {
 #if defined (POINTER_DEBUG)
 	        log_fatal("%s(%d): dereference of null pointer!", file, line);
 #else
-	        return DHCP_R_INVALIDARG;
+	        return ISC_R_INVALIDARG;
 #endif
 	}
 
@@ -878,7 +878,7 @@ option_dereference(struct option **dest, const char *file, int line)
 #if defined (POINTER_DEBUG)
 	        log_fatal("%s(%d): dereference of <= 0 refcnt!", file, line);
 #else
-	        return DHCP_R_INVALIDARG;
+	        return ISC_R_INVALIDARG;
 #endif
 	}
 

@@ -3,7 +3,7 @@
    Lexical scanner for dhcpd config file... */
 
 /*
- * Copyright (c) 2004-2010 by Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (c) 2004-2009 by Internet Systems Consortium, Inc. ("ISC")
  * Copyright (c) 1995-2003 by Internet Software Consortium
  *
  * Permission to use, copy, modify, and distribute this software for any
@@ -162,7 +162,7 @@ restore_parse_state(struct parse *cfile) {
 	struct parse *saved_state;
 
 	if (cfile->saved_state == NULL) {
-		return DHCP_R_NOTYET;
+		return ISC_R_NOTYET;
 	}
 
 	saved_state = cfile->saved_state;
@@ -177,16 +177,9 @@ static int get_char (cfile)
 	/* My kingdom for WITH... */
 	int c;
 
-	if (cfile->bufix == cfile->buflen) {
-#if !defined(LDAP_CONFIGURATION)
+	if (cfile->bufix == cfile->buflen)
 		c = EOF;
-#else /* defined(LDAP_CONFIGURATION) */
-		if (cfile->read_function != NULL)
-			c = cfile->read_function(cfile);
-		else
-			c = EOF;
-#endif
-	} else {
+	else {
 		c = cfile->inbuf [cfile->bufix];
 		cfile->bufix++;
 	}
@@ -713,70 +706,48 @@ intern(char *atom, enum dhcp_token dfv) {
 		break;
 
 	      case 'a':
-		if (!strcasecmp(atom + 1, "bandoned"))
-			return TOKEN_ABANDONED;
-		if (!strcasecmp(atom + 1, "ctive"))
-			return TOKEN_ACTIVE;
-		if (!strncasecmp(atom + 1, "dd", 2)) {
-			if (atom[3] == '\0')
-				return TOKEN_ADD;
-			else if (!strcasecmp(atom + 3, "ress"))
-				return ADDRESS;
-			break;
-		}
-		if (!strcasecmp(atom + 1, "fter"))
-			return AFTER;
-		if (isascii(atom[1]) && (tolower(atom[1]) == 'l')) {
-			if (!strcasecmp(atom + 2, "gorithm"))
-				return ALGORITHM;
-			if (!strcasecmp(atom + 2, "ias"))
-				return ALIAS;
-			if (isascii(atom[2]) && (tolower(atom[2]) == 'l')) {
-				if (atom[3] == '\0')
-					return ALL;
-				else if (!strcasecmp(atom + 3, "ow"))
-					return ALLOW;
+		if (!strncasecmp (atom + 1, "uth", 3)) {
+			if (!strncasecmp (atom + 3, "uthenticat", 10)) {
+				if (!strcasecmp (atom + 13, "ed"))
+					return AUTHENTICATED;
+				if (!strcasecmp (atom + 13, "ion"))
+					return AUTHENTICATION;
 				break;
 			}
-			if (!strcasecmp(atom + 2, "so"))
-				return TOKEN_ALSO;
+			if (!strcasecmp (atom + 1, "uthoritative"))
+				return AUTHORITATIVE;
 			break;
 		}
-		if (isascii(atom[1]) && (tolower(atom[1]) == 'n')) {
-			if (!strcasecmp(atom + 2, "d"))
-				return AND;
-			if (!strcasecmp(atom + 2, "ycast-mac"))
-				return ANYCAST_MAC;
-			break;
-		}
-		if (!strcasecmp(atom + 1, "ppend"))
+		if (!strcasecmp (atom + 1, "nd"))
+			return AND;
+		if (!strcasecmp (atom + 1, "ppend"))
 			return APPEND;
-		if (!strcasecmp(atom + 1, "rray"))
+		if (!strcasecmp (atom + 1, "llow"))
+			return ALLOW;
+		if (!strcasecmp (atom + 1, "lias"))
+			return ALIAS;
+		if (!strcasecmp (atom + 1, "lgorithm"))
+			return ALGORITHM;
+		if (!strcasecmp (atom + 1, "lso"))
+			return TOKEN_ALSO;
+		if (!strcasecmp (atom + 1, "bandoned"))
+			return TOKEN_ABANDONED;
+		if (!strcasecmp (atom + 1, "dd"))
+			return TOKEN_ADD;
+		if (!strcasecmp (atom + 1, "ll"))
+			return ALL;
+		if (!strcasecmp (atom + 1, "t"))
+			return AT;
+		if (!strcasecmp (atom + 1, "rray"))
 			return ARRAY;
-		if (isascii(atom[1]) && (tolower(atom[1]) == 't')) {
-			if (atom[2] == '\0')
-				return AT;
-			if (!strcasecmp(atom + 2, "sfp"))
-				return ATSFP;
-			break;
-		}
-		if (!strncasecmp(atom + 1, "ut", 2)) {
-			if (isascii(atom[3] && (tolower(atom[3]) == 'h'))) {
-				if (!strncasecmp(atom + 4, "enticat", 7)) {
-					if (!strcasecmp(atom + 11, "ed"))
-						return AUTHENTICATED;
-					if (!strcasecmp(atom + 11, "ion"))
-						return AUTHENTICATION;
-					break;
-				}
-				if (!strcasecmp(atom + 4, "oritative"))
-					return AUTHORITATIVE;
-				break;
-			}
-			if (!strcasecmp(atom + 3, "o-partner-down"))
-				return AUTO_PARTNER_DOWN;
-			break;
-		}
+		if (!strcasecmp (atom + 1, "ddress"))
+			return ADDRESS;
+		if (!strcasecmp (atom + 1, "ctive"))
+			return TOKEN_ACTIVE;
+		if (!strcasecmp (atom + 1, "tsfp"))
+			return ATSFP;
+                if (!strcasecmp (atom + 1, "fter"))
+                        return AFTER;
 		break;
 	      case 'b':
 		if (!strcasecmp (atom + 1, "ackup"))
@@ -991,17 +962,12 @@ intern(char *atom, enum dhcp_token dfv) {
 			return TOKEN_FREE;
 		break;
 	      case 'g':
-		if (!strncasecmp(atom + 1, "et", 2)) {
-			if (!strcasecmp(atom + 3, "-lease-hostnames"))
-				return GET_LEASE_HOSTNAMES;
-			if (!strcasecmp(atom + 3, "hostname"))
-				return GETHOSTNAME;
-			break;
-		}
 		if (!strcasecmp (atom + 1, "iaddr"))
 			return GIADDR;
 		if (!strcasecmp (atom + 1, "roup"))
 			return GROUP;
+		if (!strcasecmp (atom + 1, "et-lease-hostnames"))
+			return GET_LEASE_HOSTNAMES;
 		break;
 	      case 'h':
 		if (!strcasecmp(atom + 1, "ash"))
@@ -1236,72 +1202,63 @@ intern(char *atom, enum dhcp_token dfv) {
 			return PAUSED;
 		break;
 	      case 'r':
-		if (!strcasecmp(atom + 1, "ange"))
+		if (!strcasecmp (atom + 1, "esolution-interrupted"))
+			return RESOLUTION_INTERRUPTED;
+		if (!strcasecmp (atom + 1, "ange"))
 			return RANGE;
-		if (!strcasecmp(atom + 1, "ange6"))
+		if (!strcasecmp(atom + 1, "ange6")) {
 			return RANGE6;
-		if (isascii(atom[1]) && (tolower(atom[1]) == 'e')) {
-			if (!strcasecmp(atom + 2, "bind"))
-				return REBIND;
-			if (!strcasecmp(atom + 2, "boot"))
-				return REBOOT;
-			if (!strcasecmp(atom + 2, "contact-interval"))
-				return RECONTACT_INTERVAL;
-			if (!strncasecmp(atom + 2, "cover", 5)) {
-				if (atom[7] == '\0')
-					return RECOVER;
-				if (!strcasecmp(atom + 7, "-done"))
-					return RECOVER_DONE;
-				if (!strcasecmp(atom + 7, "-wait"))
-					return RECOVER_WAIT;
-				break;
-			}
-			if (!strcasecmp(atom + 2, "fresh"))
-				return REFRESH;
-			if (!strcasecmp(atom + 2, "fused"))
-				return NS_REFUSED;
-			if (!strcasecmp(atom + 2, "ject"))
-				return REJECT;
-			if (!strcasecmp(atom + 2, "lease"))
-				return RELEASE;
-			if (!strcasecmp(atom + 2, "leased"))
-				return TOKEN_RELEASED;
-			if (!strcasecmp(atom + 2, "move"))
-				return REMOVE;
-			if (!strcasecmp(atom + 2, "new"))
-				return RENEW;
-			if (!strcasecmp(atom + 2, "quest"))
-				return REQUEST;
-			if (!strcasecmp(atom + 2, "quire"))
-				return REQUIRE;
-			if (isascii(atom[2]) && (tolower(atom[2]) == 's')) {
-				if (!strcasecmp(atom + 3, "erved"))
-					return TOKEN_RESERVED;
-				if (!strcasecmp(atom + 3, "et"))
-					return TOKEN_RESET;
-				if (!strcasecmp(atom + 3,
-						"olution-interrupted"))
-					return RESOLUTION_INTERRUPTED;
-				break;
-			}
-			if (!strcasecmp(atom + 2, "try"))
-				return RETRY;
-			if (!strcasecmp(atom + 2, "turn"))
-				return RETURN;
-			if (!strcasecmp(atom + 2, "verse"))
-				return REVERSE;
-			if (!strcasecmp(atom + 2, "wind"))
-				return REWIND;
-			break;
 		}
+		if (!strcasecmp (atom + 1, "ecover"))
+			return RECOVER;
+		if (!strcasecmp (atom + 1, "ecover-done"))
+			return RECOVER_DONE;
+		if (!strcasecmp (atom + 1, "ecover-wait"))
+			return RECOVER_WAIT;
+		if (!strcasecmp (atom + 1, "econtact-interval"))
+			return RECONTACT_INTERVAL;
+		if (!strcasecmp (atom + 1, "equest"))
+			return REQUEST;
+		if (!strcasecmp (atom + 1, "equire"))
+			return REQUIRE;
+		if (!strcasecmp (atom + 1, "equire"))
+			return REQUIRE;
+		if (!strcasecmp (atom + 1, "etry"))
+			return RETRY;
+		if (!strcasecmp (atom + 1, "eturn"))
+			return RETURN;
+		if (!strcasecmp (atom + 1, "enew"))
+			return RENEW;
+		if (!strcasecmp (atom + 1, "ebind"))
+			return REBIND;
+		if (!strcasecmp (atom + 1, "eboot"))
+			return REBOOT;
+		if (!strcasecmp (atom + 1, "eject"))
+			return REJECT;
+		if (!strcasecmp (atom + 1, "everse"))
+			return REVERSE;
+		if (!strcasecmp (atom + 1, "elease"))
+			return RELEASE;
+		if (!strcasecmp (atom + 1, "efused"))
+			return NS_REFUSED;
+		if (!strcasecmp (atom + 1, "eleased"))
+			return TOKEN_RELEASED;
+		if (!strcasecmp (atom + 1, "eset"))
+			return TOKEN_RESET;
+		if (!strcasecmp (atom + 1, "eserved"))
+			return TOKEN_RESERVED;
+		if (!strcasecmp (atom + 1, "emove"))
+			return REMOVE;
+		if (!strcasecmp (atom + 1, "efresh"))
+			return REFRESH;
 		break;
 	      case 's':
-		if (!strcasecmp(atom + 1, "cript"))
-			return SCRIPT;
+                if (!strcasecmp(atom + 1, "cript"))
+                        return SCRIPT;
 		if (isascii(atom[1]) && 
 		    tolower((unsigned char)atom[1]) == 'e') {
-			if (!strcasecmp(atom + 2, "arch"))
-				return SEARCH;
+                        if (!strcasecmp(atom + 2, "arch"))
+                                return SEARCH;
 			if (isascii(atom[2]) && 
 			    tolower((unsigned char)atom[2]) == 'c') {
 				if (!strncasecmp(atom + 3, "ond", 3)) {
@@ -1509,4 +1466,3 @@ intern(char *atom, enum dhcp_token dfv) {
 	}
 	return dfv;
 }
-

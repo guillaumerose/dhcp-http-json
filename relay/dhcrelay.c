@@ -193,12 +193,6 @@ main(int argc, char **argv) {
 	setlogmask(LOG_UPTO(LOG_INFO));
 #endif	
 
-	/* Set up the isc and dns library managers */
-	status = dhcp_context_create();
-	if (status != ISC_R_SUCCESS)
-		log_fatal("Can't initialize context: %s",
-			  isc_result_totext(status));
-
 	/* Set up the OMAPI. */
 	status = omapi_init();
 	if (status != ISC_R_SUCCESS)
@@ -1355,7 +1349,7 @@ process_up6(struct packet *packet, struct stream_list *dp) {
 
 	/* Build the relay-forward header. */
 	relay = (struct dhcpv6_relay_packet *) forw_data;
-	cursor = offsetof(struct dhcpv6_relay_packet, options);
+	cursor = sizeof(*relay);
 	relay->msg_type = DHCPV6_RELAY_FORW;
 	if (packet->dhcpv6_msg_type == DHCPV6_RELAY_FORW) {
 		if (packet->dhcpv6_hop_count >= max_hop_count) {
@@ -1483,7 +1477,7 @@ process_down6(struct packet *packet) {
 	if (!evaluate_option_cache(&relay_msg, packet, NULL, NULL,
 				   packet->options, NULL,
 				   &global_scope, oc, MDL) ||
-	    (relay_msg.len < offsetof(struct dhcpv6_packet, options))) {
+	    (relay_msg.len < sizeof(struct dhcpv6_packet))) {
 		log_error("Can't evaluate relay-msg.");
 		return;
 	}

@@ -3,8 +3,7 @@
    Subroutines providing general support for objects. */
 
 /*
- * Copyright (c) 2004-2007,2009-2010
- *				by Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (c) 2004-2007,2009 by Internet Systems Consortium, Inc. ("ISC")
  * Copyright (c) 1999-2003 by Internet Software Consortium
  *
  * Permission to use, copy, modify, and distribute this software for any
@@ -68,6 +67,8 @@ void omapi_type_relinquish ()
 isc_result_t omapi_init (void)
 {
 	isc_result_t status;
+
+	dst_init();
 
 	/* Register all the standard object types... */
 	status = omapi_object_type_register (&omapi_type_connection,
@@ -191,6 +192,7 @@ isc_result_t omapi_init (void)
 	omapi_listener_trace_setup ();
 	omapi_connection_trace_setup ();
 	omapi_buffer_trace_setup ();
+	trace_mr_init ();
 #endif
 
 	/* This seems silly, but leave it. */
@@ -541,7 +543,7 @@ isc_result_t omapi_object_update (omapi_object_t *obj, omapi_object_t *id,
 	int i;
 
 	if (!src)
-		return DHCP_R_INVALIDARG;
+		return ISC_R_INVALIDARG;
 	if (src -> type != omapi_type_generic)
 		return ISC_R_NOTIMPLEMENTED;
 	gsrc = (omapi_generic_object_t *)src;
@@ -549,7 +551,7 @@ isc_result_t omapi_object_update (omapi_object_t *obj, omapi_object_t *id,
 		status = omapi_set_value (obj, id,
 					  gsrc -> values [i] -> name,
 					  gsrc -> values [i] -> value);
-		if (status != ISC_R_SUCCESS && status != DHCP_R_UNCHANGED)
+		if (status != ISC_R_SUCCESS && status != ISC_R_UNCHANGED)
 			return status;
 	}
 	if (handle)
@@ -843,10 +845,10 @@ isc_result_t omapi_get_int_value (unsigned long *v, omapi_typed_data_t *t)
 	} else if (t -> type == omapi_datatype_string ||
 		   t -> type == omapi_datatype_data) {
 		if (t -> u.buffer.len != sizeof (rv))
-			return DHCP_R_INVALIDARG;
+			return ISC_R_INVALIDARG;
 		memcpy (&rv, t -> u.buffer.value, sizeof rv);
 		*v = ntohl (rv);
 		return ISC_R_SUCCESS;
 	}
-	return DHCP_R_INVALIDARG;
+	return ISC_R_INVALIDARG;
 }

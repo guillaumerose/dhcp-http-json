@@ -140,8 +140,7 @@ static isc_result_t reply_process_send_prefix(struct reply_state *reply,
 static struct iasubopt *prefix_compare(struct reply_state *reply,
 				       struct iasubopt *alpha,
 				       struct iasubopt *beta);
-static int find_hosts_by_duid_chaddr(struct host_decl **host,
-				     const struct data_string *client_id);
+
 /*
  * This function returns the time since DUID time start for the
  * given time_t value.
@@ -289,7 +288,7 @@ generate_new_server_duid(void) {
 	if ((server_duid_type != DUID_LL) && (server_duid_type != DUID_LLT)) {
 		log_error("Invalid DUID type %d specified, "
 			  "only LL and LLT types supported", server_duid_type);
-		return DHCP_R_INVALIDARG;
+		return ISC_R_INVALIDARG;
 	}
 
 	/*
@@ -356,7 +355,7 @@ get_client_id(struct packet *packet, struct data_string *client_id) {
 	 * Verify our client_id structure is empty.
 	 */
 	if ((client_id->data != NULL) || (client_id->len != 0)) {
-		return DHCP_R_INVALIDARG;
+		return ISC_R_INVALIDARG;
 	}
 
 	oc = lookup_option(&dhcpv6_universe, packet->options, D6O_CLIENTID);
@@ -950,7 +949,7 @@ try_client_v6_address(struct iasubopt **addr,
 	isc_result_t result;
 
 	if (requested_addr->len < sizeof(tmp_addr)) {
-		return DHCP_R_INVALIDARG;
+		return ISC_R_INVALIDARG;
 	}
 	memcpy(&tmp_addr, requested_addr->data, sizeof(tmp_addr));
 	if (IN6_IS_ADDR_UNSPECIFIED(&tmp_addr)) {
@@ -1089,7 +1088,7 @@ try_client_v6_prefix(struct iasubopt **pref,
 	isc_result_t result;
 
 	if (requested_pref->len < sizeof(tmp_plen) + sizeof(tmp_pref)) {
-		return DHCP_R_INVALIDARG;
+		return ISC_R_INVALIDARG;
 	}
 	tmp_plen = (int) requested_pref->data[0];
 	if ((tmp_plen < 3) || (tmp_plen > 128)) {
@@ -1278,21 +1277,15 @@ lease_to_client(struct data_string *reply_ret,
 	 * Find a host record that matches from the packet, if any, and is
 	 * valid for the shared network the client is on.
 	 */
-	if (find_hosts_by_uid(&reply.host, client_id->data, client_id->len,
-			      MDL))
+	if (find_hosts_by_option(&reply.host, packet, packet->options, MDL)) {
 		seek_shared_host(&reply.host, reply.shared);
+	}
 
 	if ((reply.host == NULL) &&
-	    find_hosts_by_option(&reply.host, packet, packet->options, MDL))
+	    find_hosts_by_uid(&reply.host, client_id->data, client_id->len,
+			      MDL)) {
 		seek_shared_host(&reply.host, reply.shared);
-
-	/*
-	 * Check for 'hardware' matches last, as some of the synthesis methods
-	 * are not considered to be as reliable.
-	 */
-	if ((reply.host == NULL) &&
-	    find_hosts_by_duid_chaddr(&reply.host, client_id))
-		seek_shared_host(&reply.host, reply.shared);
+	}
 
 	/* Process the client supplied IA's onto the reply buffer. */
 	reply.ia_count = 0;
@@ -1606,7 +1599,7 @@ reply_process_ia_na(struct reply_state *reply, struct option_cache *ia) {
 
 		if (reply->fixed.len < 16) {
 			log_error("reply_process_ia_na: invalid fixed address.");
-			status = DHCP_R_INVALIDARG;
+			status = ISC_R_INVALIDARG;
 			goto cleanup;
 		}
 
@@ -1845,7 +1838,6 @@ reply_process_ia_na(struct reply_state *reply, struct option_cache *ia) {
 			renew_lease6(tmp->ipv6_pool, tmp);
 			schedule_lease_timeout(tmp->ipv6_pool);
 
-#if defined (NSUPDATE)
 			/*
 			 * Perform ddns updates.
 			 */
@@ -1861,7 +1853,6 @@ reply_process_ia_na(struct reply_state *reply, struct option_cache *ia) {
 				ddns_updates(reply->packet, NULL, NULL,
 					     tmp, NULL, reply->opt_state);
 			}
-#endif
 		}
 
 		/* Remove any old ia from the hash. */
@@ -2503,7 +2494,6 @@ reply_process_ia_ta(struct reply_state *reply, struct option_cache *ia) {
 			renew_lease6(tmp->ipv6_pool, tmp);
 			schedule_lease_timeout(tmp->ipv6_pool);
 
-#if defined (NSUPDATE)
 			/*
 			 * Perform ddns updates.
 			 */
@@ -2519,7 +2509,6 @@ reply_process_ia_ta(struct reply_state *reply, struct option_cache *ia) {
 				ddns_updates(reply->packet, NULL, NULL,
 					     tmp, NULL, reply->opt_state);
 			}
-#endif
 		}
 
 		/* Remove any old ia from the hash. */
@@ -2711,7 +2700,7 @@ reply_process_try_addr(struct reply_state *reply, struct iaddr *addr) {
 	if ((reply == NULL) || (reply->shared == NULL) ||
 	    (reply->shared->ipv6_pools == NULL) || (addr == NULL) ||
 	    (reply->lease != NULL))
-		return DHCP_R_INVALIDARG;
+		return ISC_R_INVALIDARG;
 
 	memset(&data_addr, 0, sizeof(data_addr));
 	data_addr.len = addr->len;
@@ -2747,7 +2736,7 @@ find_client_address(struct reply_state *reply) {
 
 	if (reply->static_lease) {
 		if (reply->host == NULL)
-			return DHCP_R_INVALIDARG;
+			return ISC_R_INVALIDARG;
 
 		send_addr.len = 16;
 		memcpy(send_addr.iabuf, reply->fixed.data, 16);
@@ -3691,7 +3680,7 @@ reply_process_try_prefix(struct reply_state *reply,
 	if ((reply == NULL) || (reply->shared == NULL) ||
 	    (reply->shared->ipv6_pools == NULL) || (pref == NULL) ||
 	    (reply->lease != NULL))
-		return DHCP_R_INVALIDARG;
+		return ISC_R_INVALIDARG;
 
 	memset(&data_pref, 0, sizeof(data_pref));
 	data_pref.len = 17;
@@ -3733,7 +3722,7 @@ find_client_prefix(struct reply_state *reply) {
 		struct iaddrcidrnetlist *l;
 
 		if (reply->host == NULL)
-			return DHCP_R_INVALIDARG;
+			return ISC_R_INVALIDARG;
 
 		for (l = reply->host->fixed_prefix; l != NULL; l = l->next) {
 			if (l->cidrnet.bits == reply->preflen)
@@ -4166,7 +4155,7 @@ shared_network_from_packet6(struct shared_network **shared,
 	isc_result_t status;
 
 	if ((shared == NULL) || (*shared != NULL) || (packet == NULL))
-		return DHCP_R_INVALIDARG;
+		return ISC_R_INVALIDARG;
 
 	/*
 	 * First, find the link address where the packet from the client
@@ -4207,25 +4196,10 @@ shared_network_from_packet6(struct shared_network **shared,
 	 * If there is no link address, we will use the interface
 	 * that this packet came in on to pick the shared_network.
 	 */
-	} else if (packet->interface != NULL) {
+	} else {
 		status = shared_network_reference(shared,
 					 packet->interface->shared_network,
 					 MDL);
-                if (packet->dhcpv6_container_packet != NULL) {
-			log_info("[L2 Relay] No link address in relay packet "
-				 "assuming L2 relay and using receiving "
-				 "interface");
-                }
-
-	} else {
-		/*
-		 * We shouldn't be able to get here but if there is no link
-		 * address and no interface we don't know where to get the
-		 * pool from log an error and return an error.
-		 */
-		log_error("No interface and no link address " 
-			  "can't determine pool");
-		status = DHCP_R_INVALIDARG;
 	}
 
 	return status;
@@ -4261,7 +4235,7 @@ dhcpv6_confirm(struct data_string *reply_ret, struct packet *packet) {
 	isc_boolean_t inappropriate, has_addrs;
 	char reply_data[65536];
 	struct dhcpv6_packet *reply = (struct dhcpv6_packet *)reply_data;
-	int reply_ofs = (int)(offsetof(struct dhcpv6_packet, options));
+	int reply_ofs = (int)((char *)reply->options - (char *)reply);
 
 	/* 
 	 * Basic client message validation.
@@ -4618,7 +4592,7 @@ iterate_over_ia_na(struct data_string *reply_ret,
 	int iaaddr_is_found;
 	char reply_data[65536];
 	struct dhcpv6_packet *reply = (struct dhcpv6_packet *)reply_data;
-	int reply_ofs = (int)(offsetof(struct dhcpv6_packet, options));
+	int reply_ofs = (int)((char *)reply->options - (char *)reply);
 	char status_msg[32];
 	struct iasubopt *lease;
 	struct ia_xx *existing_ia_na;
@@ -4653,10 +4627,6 @@ iterate_over_ia_na(struct data_string *reply_ret,
 		if (!find_hosts_by_option(&packet_host, 
 					  packet, packet->options, MDL)) {
 			packet_host = NULL;
-
-			if (!find_hosts_by_duid_chaddr(&packet_host,
-						       client_id))
-				packet_host = NULL;
 		}
 	}
 
@@ -4759,8 +4729,7 @@ iterate_over_ia_na(struct data_string *reply_ret,
 
 		/* 
 		 * Now we need to figure out which host record matches
-		 * this IA_NA and IAADDR (encapsulated option contents
-		 * matching a host record by option).
+		 * this IA_NA and IAADDR.
 		 *
 		 * XXX: We don't currently track IA_NA separately, but
 		 *      we will need to do this!
@@ -5176,10 +5145,6 @@ iterate_over_ia_pd(struct data_string *reply_ret,
 		if (!find_hosts_by_option(&packet_host, 
 					  packet, packet->options, MDL)) {
 			packet_host = NULL;
-
-			if (!find_hosts_by_duid_chaddr(&packet_host,
-						       client_id))
-				packet_host = NULL;
 		}
 	}
 
@@ -5232,8 +5197,7 @@ iterate_over_ia_pd(struct data_string *reply_ret,
 
 		/* 
 		 * Now we need to figure out which host record matches
-		 * this IA_PD and IAPREFIX (encapsulated option contents
-		 * matching a host record by option).
+		 * this IA_PD and IAPREFIX.
 		 *
 		 * XXX: We don't currently track IA_PD separately, but
 		 *      we will need to do this!
@@ -5523,7 +5487,6 @@ dhcpv6_relay_forw(struct data_string *reply_ret, struct packet *packet) {
 
 	enc_packet->client_port = packet->client_port;
 	enc_packet->client_addr = packet->client_addr;
-	interface_reference(&enc_packet->interface, packet->interface, MDL);
 	enc_packet->dhcpv6_container_packet = packet;
 
 	msg_type = enc_opt_data.data[0];
@@ -5591,7 +5554,7 @@ dhcpv6_relay_forw(struct data_string *reply_ret, struct packet *packet) {
 	       sizeof(reply->link_address));
 	memcpy(reply->peer_address, &packet->dhcpv6_peer_address,
 	       sizeof(reply->peer_address));
-	reply_ofs = (int)(offsetof(struct dhcpv6_relay_packet, options));
+	reply_ofs = (int)((char *)reply->options - (char *)reply);
 
 	/*
 	 * Get the reply option state.
@@ -5966,78 +5929,6 @@ fixed_matches_shared(struct host_decl *host, struct shared_network *shared) {
 
 	data_string_forget(&addr, MDL);
 	return matched;
-}
-
-/*
- * find_host_by_duid_chaddr() synthesizes a DHCPv4-like 'hardware'
- * parameter from a DHCPv6 supplied DUID (client-identifier option),
- * and may seek to use client or relay supplied hardware addresses.
- */
-static int
-find_hosts_by_duid_chaddr(struct host_decl **host,
-			  const struct data_string *client_id) {
-	static int once_htype;
-	int htype, hlen;
-	const unsigned char *chaddr;
-
-	/*
-	 * The DUID-LL and DUID-LLT must have a 2-byte DUID type and 2-byte
-	 * htype.
-	 */
-	if (client_id->len < 4)
-		return 0;
-
-	/*
-	 * The third and fourth octets of the DUID-LL and DUID-LLT
-	 * is the hardware type, but in 16 bits.
-	 */
-	htype = getUShort(client_id->data + 2);
-	hlen = 0;
-	chaddr = NULL;
-
-	/* The first two octets of the DUID identify the type. */
-	switch(getUShort(client_id->data)) {
-	      case DUID_LLT:
-		if (client_id->len > 8) {
-			hlen = client_id->len - 8;
-			chaddr = client_id->data + 8;
-		}
-		break;
-
-	      case DUID_LL:
-		/*
-		 * Note that client_id->len must be greater than or equal
-		 * to four to get to this point in the function.
-		 */
-		hlen = client_id->len - 4;
-		chaddr = client_id->data + 4;
-		break;
-
-	      default:
-		break;
-	}
-
-	if (hlen == 0)
-		return 0;
-
-	/*
-	 * XXX: DHCPv6 gives a 16-bit field for the htype.  DHCPv4 gives an
-	 * 8-bit field.  To change the semantics of the generic 'hardware'
-	 * structure, we would have to adjust many DHCPv4 sources (from
-	 * interface to DHCPv4 lease code), and we would have to update the
-	 * 'hardware' config directive (probably being reverse compatible and
-	 * providing a new upgrade/replacement primitive).  This is a little
-	 * too much to change for now.  Hopefully we will revisit this before
-	 * hardware types exceeding 8 bits are assigned.
-	 */
-	if ((htype & 0xFF00) && !once_htype) {
-		once_htype = 1;
-		log_error("Attention: At least one client advertises a "
-			  "hardware type of %d, which exceeds the software "
-			  "limitation of 255.", htype);
-	}
-
-	return find_hosts_by_haddr(host, htype, chaddr, hlen, MDL);
 }
 
 #endif /* DHCPv6 */

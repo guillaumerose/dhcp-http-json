@@ -79,7 +79,6 @@ INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
-LDAP_CFLAGS = @LDAP_CFLAGS@
 LDFLAGS = @LDFLAGS@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
@@ -92,7 +91,6 @@ PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
 PACKAGE_NAME = @PACKAGE_NAME@
 PACKAGE_STRING = @PACKAGE_STRING@
 PACKAGE_TARNAME = @PACKAGE_TARNAME@
-PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 RANLIB = @RANLIB@
@@ -145,14 +143,18 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 nobase_include_HEADERS = omapip/alloc.h omapip/buffer.h omapip/convert.h \
-			 omapip/hash.h omapip/isclib.h omapip/omapip.h \
-			 omapip/omapip_p.h omapip/result.h omapip/trace.h \
-			 isc-dhcp/dst.h
+			 omapip/hash.h omapip/omapip.h omapip/omapip_p.h \
+			 omapip/trace.h \
+			 isc-dhcp/boolean.h isc-dhcp/formatcheck.h \
+			 isc-dhcp/lang.h isc-dhcp/mem.h isc-dhcp/result.h \
+			 isc-dhcp/types.h isc-dhcp/commandline.h \
+			 isc-dhcp/dst.h isc-dhcp/int.h isc-dhcp/list.h \
+			 isc-dhcp/print.h isc-dhcp/string.h
 
 EXTRA_DIST = cdefs.h ctrace.h dhcp.h dhcp6.h dhcpd.h dhctoken.h failover.h \
-	     heap.h inet.h minires.h osdep.h site.h statement.h tree.h \
-	     t_api.h \
+	     heap.h inet.h osdep.h site.h statement.h tree.h t_api.h \
 	     arpa/nameser.h arpa/nameser_compat.h \
+	     minires/minires.h minires/res_update.h minires/resolv.h \
 	     netinet/if_ether.h netinet/ip.h netinet/ip_icmp.h netinet/udp.h
 
 all: config.h

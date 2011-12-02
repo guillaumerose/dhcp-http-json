@@ -143,18 +143,15 @@ form_duid(struct data_string *duid, const char *file, int line)
 	    (ip->hw_address.hlen > sizeof(ip->hw_address.hbuf)))
 		log_fatal("Impossible hardware address length at %s:%d.", MDL);
 
-	if (duid_type == 0)
-		duid_type = stateless ? DUID_LL : DUID_LLT;
-
 	/*
 	 * 2 bytes for the 'duid type' field.
 	 * 2 bytes for the 'htype' field.
-	 * (DUID_LLT) 4 bytes for the 'current time'.
+	 * (not stateless) 4 bytes for the 'current time'.
 	 * enough bytes for the hardware address (note that hw_address has
 	 * the 'htype' on byte zero).
 	 */
 	len = 4 + (ip->hw_address.hlen - 1);
-	if (duid_type == DUID_LLT)
+	if (!stateless)
 		len += 4;
 	if (!buffer_allocate(&duid->buffer, len, MDL))
 		log_fatal("no memory for default DUID!");
@@ -162,7 +159,7 @@ form_duid(struct data_string *duid, const char *file, int line)
 	duid->len = len;
 
 	/* Basic Link Local Address type of DUID. */
-	if (duid_type == DUID_LLT) {
+	if (!stateless) {
 		putUShort(duid->buffer->data, DUID_LLT);
 		putUShort(duid->buffer->data + 2, ip->hw_address.hbuf[0]);
 		putULong(duid->buffer->data + 4, cur_time - DUID_TIME_EPOCH);
@@ -744,7 +741,7 @@ dhc6_parse_ia_na(struct dhc6_ia **pia, struct packet *packet,
 								 MDL);
 					dfree(ia, MDL);
 					data_string_forget(&ds, MDL);
-					return DHCP_R_BADPARSE;
+					return ISC_R_BADPARSE;
 				}
 			}
 			data_string_forget(&ds, MDL);
@@ -829,7 +826,7 @@ dhc6_parse_ia_ta(struct dhc6_ia **pia, struct packet *packet,
 								 MDL);
 					dfree(ia, MDL);
 					data_string_forget(&ds, MDL);
-					return DHCP_R_BADPARSE;
+					return ISC_R_BADPARSE;
 				}
 			}
 			data_string_forget(&ds, MDL);
@@ -933,7 +930,7 @@ dhc6_parse_ia_pd(struct dhc6_ia **pia, struct packet *packet,
 								 MDL);
 					dfree(ia, MDL);
 					data_string_forget(&ds, MDL);
-					return DHCP_R_BADPARSE;
+					return ISC_R_BADPARSE;
 				}
 			}
 			data_string_forget(&ds, MDL);
@@ -1039,7 +1036,7 @@ dhc6_parse_addrs(struct dhc6_addr **paddr, struct packet *packet,
 								 MDL);
 					dfree(addr, MDL);
 					data_string_forget(&ds, MDL);
-					return DHCP_R_BADPARSE;
+					return ISC_R_BADPARSE;
 				}
 			}
 
@@ -1145,7 +1142,7 @@ dhc6_parse_prefixes(struct dhc6_addr **ppfx, struct packet *packet,
 								 MDL);
 					dfree(pfx, MDL);
 					data_string_forget(&ds, MDL);
-					return DHCP_R_BADPARSE;
+					return ISC_R_BADPARSE;
 				}
 			}
 
@@ -2325,10 +2322,10 @@ dhc6_get_status_code(struct option_state *options, unsigned *code,
 	isc_result_t rval = ISC_R_SUCCESS;
 
 	if ((options == NULL) || (code == NULL))
-		return DHCP_R_INVALIDARG;
+		return ISC_R_INVALIDARG;
 
 	if ((msg != NULL) && (msg->len != 0))
-		return DHCP_R_INVALIDARG;
+		return ISC_R_INVALIDARG;
 
 	memset(&ds, 0, sizeof(ds));
 
@@ -2341,7 +2338,7 @@ dhc6_get_status_code(struct option_state *options, unsigned *code,
 				  NULL, &global_scope, oc, MDL)) {
 		if (ds.len < 2) {
 			log_error("Invalid status code length %d.", ds.len);
-			rval = DHCP_R_FORMERR;
+			rval = ISC_R_FORMERR;
 		} else
 			*code = getUShort(ds.data);
 
@@ -2368,7 +2365,7 @@ dhc6_check_status(isc_result_t rval, struct option_state *options,
 	isc_result_t status;
 
 	if ((scope == NULL) || (code == NULL))
-		return DHCP_R_INVALIDARG;
+		return ISC_R_INVALIDARG;
 
 	/* If we don't find a code, we assume success. */
 	*code = STATUS_Success;
@@ -2452,7 +2449,7 @@ dhc6_init_action(struct client_state *client, isc_result_t *rvalp,
 		log_fatal("Impossible condition at %s:%d.", MDL);
 
 	if (client == NULL) {
-		*rvalp = DHCP_R_INVALIDARG;
+		*rvalp = ISC_R_INVALIDARG;
 		return ISC_FALSE;
 	}
 
@@ -2478,7 +2475,7 @@ dhc6_select_action(struct client_state *client, isc_result_t *rvalp,
 		log_fatal("Impossible condition at %s:%d.", MDL);
 
 	if (client == NULL) {
-		*rvalp = DHCP_R_INVALIDARG;
+		*rvalp = ISC_R_INVALIDARG;
 		return ISC_FALSE;
 	}
 	rval = *rvalp;
@@ -2605,7 +2602,7 @@ dhc6_reply_action(struct client_state *client, isc_result_t *rvalp,
 		log_fatal("Impossible condition at %s:%d.", MDL);
 
 	if (client == NULL) {
-		*rvalp = DHCP_R_INVALIDARG;
+		*rvalp = ISC_R_INVALIDARG;
 		return ISC_FALSE;
 	}
 	rval = *rvalp;
@@ -2706,7 +2703,7 @@ dhc6_stop_action(struct client_state *client, isc_result_t *rvalp,
 		log_fatal("Impossible condition at %s:%d.", MDL);
 
 	if (client == NULL) {
-		*rvalp = DHCP_R_INVALIDARG;
+		*rvalp = ISC_R_INVALIDARG;
 		return ISC_FALSE;
 	}
 	rval = *rvalp;
@@ -2772,7 +2769,7 @@ dhc6_check_reply(struct client_state *client, struct dhc6_lease *new)
 	int nscore, sscore;
 
 	if ((client == NULL) || (new == NULL))
-		return DHCP_R_INVALIDARG;
+		return ISC_R_INVALIDARG;
 
 	switch (client->state) {
 	      case S_INIT:
@@ -2819,7 +2816,7 @@ dhc6_check_reply(struct client_state *client, struct dhc6_lease *new)
 				break;
 			default:
 				log_error("dhc6_check_reply: no type.");
-				return DHCP_R_INVALIDARG;
+				return ISC_R_INVALIDARG;
 		}
 		rval = dhc6_check_status(rval, ia->options,
 					 scope, &code);
@@ -4392,9 +4389,7 @@ start_bound(struct client_state *client)
 	struct dhc6_addr *addr, *oldaddr;
 	struct dhc6_lease *lease, *old;
 	const char *reason;
-#if defined (NSUPDATE)
 	TIME dns_update_offset = 1;
-#endif
 
 	lease = client->active_lease;
 	if (lease == NULL) {
@@ -4455,12 +4450,10 @@ start_bound(struct client_state *client)
 			} else
 				oldaddr = NULL;
 
-#if defined (NSUPDATE)
 			if ((oldaddr == NULL) && (ia->ia_type == D6O_IA_NA))
 				dhclient_schedule_updates(client,
 							  &addr->address,
 							  dns_update_offset++);
-#endif
 
 			/* Shell out to setup the new binding. */
 			script_init(client, reason, NULL);
@@ -4791,13 +4784,11 @@ do_depref(void *input)
 					     piaddr(addr->address),
 					     (unsigned) addr->plen);
 
-#if defined (NSUPDATE)
 				/* Remove DDNS bindings at depref time. */
 				if ((ia->ia_type == D6O_IA_NA) &&
 				    client->config->do_forward_update)
-					client_dns_remove(client, 
+					client_dns_update(client, 0, 0,
 							  &addr->address);
-#endif
 			}
 		}
 	}
@@ -4844,7 +4835,6 @@ do_expire(void *input)
 					     piaddr(addr->address),
 					     (unsigned) addr->plen);
 
-#if defined (NSUPDATE)
 				/* We remove DNS records at depref time, but
 				 * it is possible that we might get here
 				 * without depreffing.
@@ -4852,9 +4842,8 @@ do_expire(void *input)
 				if ((ia->ia_type == D6O_IA_NA) &&
 				    client->config->do_forward_update &&
 				    !(addr->flags & DHC6_ADDR_DEPREFFED))
-					client_dns_remove(client,
+					client_dns_update(client, 0, 0,
 							  &addr->address);
-#endif
 
 				continue;
 			}
@@ -4913,11 +4902,9 @@ unconfigure6(struct client_state *client, const char *reason)
 					     client->active_lease, ia, addr);
 			script_go(client);
 
-#if defined (NSUPDATE)
 			if ((ia->ia_type == D6O_IA_NA) &&
 			    client->config->do_forward_update)
-				client_dns_remove(client, &addr->address);
-#endif
+				client_dns_update(client, 0, 0, &addr->address);
 		}
 	}
 }
