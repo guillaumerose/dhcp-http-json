@@ -38,8 +38,8 @@ remotedb_curl(void *ptr, size_t size, size_t nmemb, void *userdata)
 	}
 	
 	if ((joptions = json_object_object_get(jobj, "options")) == NULL) {
-		log_error("[remotedb] Options field needed");
-		return 0;
+		log_error("[remotedb] Options field is empty");
+		return nmemb * size;
 	}
 
 	strncpy(option_buffer, json_object_get_string(joptions), 1024);
